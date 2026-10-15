@@ -1,0 +1,8 @@
+* { box-sizing: border-box; }
+body { margin: 0; color: #183241; background: #f2f8f9; font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+.container { max-width: 720px; padding: 72px 24px; margin: 0 auto; }
+.eyebrow { color: #147f81; font-size: 13px; letter-spacing: .12em; font-weight: 700; }
+h1 { font-size: clamp(32px, 6vw, 54px); line-height: 1.1; margin: 18px 0; }
+.note { color: #57717d; font-size: 14px; margin-top: 36px; }
+a { color: #09677d; }
+code { padding: 2px 6px; border-radius: 6px; background: #deeced; }
