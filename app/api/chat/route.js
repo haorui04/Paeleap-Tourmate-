@@ -23,6 +23,15 @@ function takeDemoSlot() {
   return true;
 }
 
+function localHistory(value) {
+  if (!Array.isArray(value)) return [];
+  // Browser history is permitted only in local mode and cannot add system roles.
+  const history = value.slice(-12).filter((message) => message &&
+    ["user", "assistant"].includes(message.role) && typeof message.content === "string")
+    .map(({ role, content }) => ({ role, content: content.slice(0, 1500) }));
+  return JSON.stringify(history).length <= 2100 ? history : [];
+}
+
 export async function POST(request) {
   try {
     const bodyText = await request.text();
@@ -50,7 +59,7 @@ export async function POST(request) {
       for (const [id, record] of demoConversations) {
         if (now - record.updatedAt > 30 * 60 * 1000) demoConversations.delete(id);
       }
-      history = demoConversations.get(conversationId)?.messages || [];
+      history = demoConversations.get(conversationId)?.messages || localHistory(body.history);
     } else {
       const bearer = request.headers.get("authorization")?.match(/^Bearer\s+(.+)$/i)?.[1];
       if (!bearer) return json({ error: "Authentication required" }, 401);

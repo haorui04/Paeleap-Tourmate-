@@ -22,7 +22,11 @@ ALLOW_LOCAL_DEMO=true
 AI_MOCK_MODE=true
 ```
 
-These modes are **automatically disabled in production**. Mock responses use curated data, not an AI API. Local conversation context is held in bounded process memory for up to 30 minutes, and the UI caches the current conversation per browser tab. Local mode does not write to Supabase and loses server context when the server restarts.
+These modes are **automatically disabled in production**. Mock responses use curated data, not an AI API. Each trip has its own sidebar entry, messages, draft and conversation ID. The browser saves all trip transcripts in local storage, separated by account, and restores them after reload or a browser restart. If only session storage is available, it is used as a fallback and the UI explains the persistence limitation.
+
+Local server context remains bounded to 30 minutes. If that context is missing after a restart, the local-only request can supply a bounded selection of earlier user/assistant messages. This optional `history` field is ignored in authenticated mode; signed-in context comes from the database. Local mode does not write to Supabase.
+
+Saved browser history belongs to one browser profile and origin. `localhost`, `127.0.0.1` and different port numbers have separate storage. Return to the same URL to see your local trips. The old single-chat session is migrated automatically; chats that were already cleared by the old implementation cannot be recovered from local sample mode.
 
 ```bash
 curl http://localhost:3000/api/status
@@ -95,8 +99,10 @@ To send user credentials from the frontend, get a valid Supabase session access 
 
 - `app/page.jsx`, `app/layout.jsx`, `app/globals.css` — root page and responsive visual shell.
 - `components/ChatShell.jsx` — bilingual chat, conversation state, cancellation, errors and verified reference links.
+- `components/useTripHistory.js` — separate trip tabs, persistent browser history, drafts and authenticated cloud history loading.
 - `components/AuthPanel.jsx` — Supabase account creation and sign-in.
 - `lib/client/` — browser Auth client and validated chat contract.
+- `postcss.config.mjs` — Tailwind CSS integration for responsive layout utilities.
 - `next.config.mjs` — anchors Next.js to this project, avoiding unrelated ancestor lockfiles.
 
 - `app/api/chat/route.js` — validated bilingual chat API.
@@ -117,12 +123,14 @@ npm run build
 
 The automated suite includes authenticated API contract checks with simulated external services, ownership, quotas, safety statuses, provider errors, local context reuse, and frontend response validation. These tests do not replace a live test against your actual provider and Supabase project.
 
+Trip-history tests also cover migration, keeping more than forty messages, restoring timestamps and references, account-specific storage, paginated cloud reads and safe local context. The UI development checklist and remaining Git publication limitations are documented in `UI-CHECKLIST.md`.
+
 ## Known limits and Day 2 handoff
 
 - Static knowledge covers four Hangzhou heritage entries and is not live route or booking data.
 - Prompt-injection and harmful-content checks are baseline heuristics, **not** a comprehensive safety guarantee.
 - Output validation is intentionally conservative; some useful timetable-like suggestions may be replaced with a verification warning.
-- Durable chat history requires configured Supabase. Local history is temporary process memory plus a per-tab browser cache.
+- Cross-device history requires configured Supabase. Local transcripts persist in browser storage until that storage is cleared; local server context is temporary.
 - Provider authentication and database schema require credentials and deployment configuration.
 - Real provider responses and live Supabase sign-in require credentials that have not been supplied in this project.
 - No production deployment has been performed yet.

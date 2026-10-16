@@ -1,7 +1,7 @@
 name: Application checks
 on:
   push:
-    branches: [main, feature/ai-backend-day1]
+    branches: [main, frontend, feature/ai-backend-day1, feature/frontend-chat]
   pull_request:
     branches: [main]
 

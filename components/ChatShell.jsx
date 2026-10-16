@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import AuthPanel from "./AuthPanel.jsx";
+import useTripHistory from "./useTripHistory.js";
 import { getSupabaseBrowserClient } from "../lib/client/supabase.js";
+import { localHistoryForRequest } from "../lib/client/trips.js";
 import {
   MAX_MESSAGE_LENGTH,
   SAFETY_LABELS,
@@ -16,7 +18,15 @@ const text = {
   en: {
     brandTag: "AI TOUR COMPANION",
     newTrip: "New trip",
-    recent: "CURRENT TRIP",
+    recent: "CURRENT TRIPS",
+    untitledTrip: "New trip",
+    tripNavigation: "Saved trips",
+    openTrips: "Open trips",
+    closeTrips: "Close trips",
+    historyLoading: "Loading your saved conversation…",
+    historyError: "Your saved conversation couldn't be loaded. Try again.",
+    syncError: "Saved trips couldn't be synced. Your local chats are still available.",
+    storageError: "This browser couldn't save your history. Chats will remain available while this page is open.",
     emptyTrip: "Your first plan starts here",
     trustTitle: "Designed for safer travel",
     trustBody: "TourMate checks requests against travel-safety rules and uses curated heritage sources.",
@@ -53,7 +63,15 @@ const text = {
   zh: {
     brandTag: "AI 智能旅行伴侣",
     newTrip: "新行程",
-    recent: "当前行程",
+    recent: "所有行程",
+    untitledTrip: "新行程",
+    tripNavigation: "已保存行程",
+    openTrips: "打开行程列表",
+    closeTrips: "关闭行程列表",
+    historyLoading: "正在加载已保存的对话…",
+    historyError: "无法加载已保存的对话，请重试。",
+    syncError: "无法同步已保存行程，本地对话仍可使用。",
+    storageError: "浏览器无法保存历史记录。当前页面保持打开时仍可查看对话。",
     emptyTrip: "从这里开始你的第一个计划",
     trustTitle: "为安心旅行而设计",
     trustBody: "TourMate 会依据旅行安全规则检查请求，并使用经过整理的遗产资料。",
@@ -92,6 +110,8 @@ const text = {
 function Icon({ name, size = 20 }) {
   const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true };
   if (name === "plus") return <svg {...common}><path d="M12 5v14M5 12h14" /></svg>;
+  if (name === "menu") return <svg {...common}><path d="M4 6h16M4 12h16M4 18h16" /></svg>;
+  if (name === "close") return <svg {...common}><path d="m6 6 12 12M18 6 6 18" /></svg>;
   if (name === "send") return <svg {...common}><path d="m21 3-7.5 18-4.2-7.8L3 9l18-6Z" /><path d="m9.3 13.2 4.2-4.2" /></svg>;
   if (name === "shield") return <svg {...common}><path d="M12 3 5 6v5c0 4.8 2.8 8.1 7 10 4.2-1.9 7-5.2 7-10V6l-7-3Z" /><path d="m9 12 2 2 4-5" /></svg>;
   if (name === "copy") return <svg {...common}><rect x="8" y="8" width="11" height="11" rx="2" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" /></svg>;
@@ -131,17 +151,19 @@ function Message({ message, language, copied, onCopy }) {
         <div className={`message-bubble ${assistant ? "assistant-bubble" : "user-bubble"}`}>
           <p>{message.content}</p>
         </div>
-        {assistant && (
           <div className="message-meta">
-            <SafetyBadge status={message.safety} language={language} />
+            {message.createdAt && <time className="message-time" dateTime={message.createdAt}
+              title={new Date(message.createdAt).toLocaleString(language === "zh" ? "zh-CN" : "en-US")}>
+              {new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : "en-US", { hour: "2-digit", minute: "2-digit" }).format(new Date(message.createdAt))}
+            </time>}
+            {assistant && <SafetyBadge status={message.safety} language={language} />}
             {message.safety === "allowed" && message.sources?.length > 0 && (
               <span className="grounded-label"><Icon name="shield" size={14} />{SAFETY_LABELS[language].allowed}</span>
             )}
-            <button className="copy-button" type="button" onClick={() => onCopy(message)} aria-label={t.copy}>
+            {assistant && <button className="copy-button" type="button" onClick={() => onCopy(message)} aria-label={t.copy}>
               <Icon name="copy" size={14} />{copied === message.id ? t.copied : t.copy}
-            </button>
+            </button>}
           </div>
-        )}
         {assistant && message.sources?.length > 0 && (
           <div className="sources-card">
             <p><Icon name="link" size={15} />{t.sourceTitle}</p>
@@ -166,16 +188,13 @@ export default function ChatShell() {
   const [authClient, setAuthClient] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [session, setSession] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [conversationId, setConversationId] = useState(null);
-  const [draft, setDraft] = useState("");
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState("");
   const [copied, setCopied] = useState(null);
-  const [storageLoadedKey, setStorageLoadedKey] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const endRef = useRef(null);
   const textareaRef = useRef(null);
-  const controllerRef = useRef(null);
+  const requestsRef = useRef(new Map());
+  const sidebarRef = useRef(null);
+  const historyButtonRef = useRef(null);
   const t = text[language];
 
   useEffect(() => {
@@ -231,59 +250,53 @@ export default function ChatShell() {
     return () => { active = false; listener.subscription.unsubscribe(); };
   }, []);
 
-  useEffect(() => () => {
-    const controller = controllerRef.current;
-    controllerRef.current = null;
-    controller?.abort();
-  }, []);
-
   const demoMode = service.data?.localDemoMode === true;
   const chatIdentity = demoMode ? "demo" : session?.user?.id || null;
-  const storageKey = chatIdentity ? `paeleap.chat.v1.${chatIdentity}` : null;
+  const history = useTripHistory(chatIdentity, authClient);
+  const { trips, activeTrip } = history;
+  const messages = activeTrip?.messages || [];
+  const draft = activeTrip?.draft || "";
+  const error = activeTrip?.error || "";
+  const pending = activeTrip?.pending === true;
+  const historyUnavailable = activeTrip?.loaded === false;
+
+  useEffect(() => () => {
+    for (const controller of requestsRef.current.values()) controller.abort();
+    requestsRef.current.clear();
+  }, [chatIdentity]);
 
   useEffect(() => {
-    if (!storageKey) {
-      setStorageLoadedKey(null);
-      setMessages([]);
-      setConversationId(null);
-      return;
-    }
-    try {
-      const stored = JSON.parse(window.sessionStorage.getItem(storageKey) || "null");
-      const restored = Array.isArray(stored?.messages) ? stored.messages.filter((message) =>
-        message && typeof message.id === "string" && typeof message.content === "string" &&
-        (message.role === "user" || message.role === "assistant")
-      ).slice(-40).map((message) => {
-        const restoredMessage = { id: message.id, role: message.role, content: message.content };
-        if (message.role === "assistant") {
-          try {
-            const parsed = parseChatResponse({ reply: message.content, conversationId: stored.conversationId,
-              sources: message.sources, safety: { status: message.safety } });
-            restoredMessage.sources = parsed.sources;
-            restoredMessage.safety = parsed.safety;
-          } catch { /* Ignore malformed optional metadata in a browser cache. */ }
-        }
-        return restoredMessage;
-      }) : [];
-      setMessages(restored);
-      setConversationId(typeof stored?.conversationId === "string" && /^[0-9a-f-]{36}$/i.test(stored.conversationId) ? stored.conversationId : null);
-    } catch {
-      setMessages([]);
-      setConversationId(null);
-    }
-    setStorageLoadedKey(storageKey);
-  }, [storageKey]);
+    if (!sidebarOpen) return undefined;
+    const media = window.matchMedia("(max-width: 720px)");
+    const onResize = () => { if (!media.matches) setSidebarOpen(false); };
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") { setSidebarOpen(false); historyButtonRef.current?.focus(); }
+      if (event.key === "Tab") {
+        const buttons = [...sidebarRef.current.querySelectorAll("button:not(:disabled)")].filter((button) => button.offsetParent !== null);
+        const first = buttons[0]; const last = buttons.at(-1);
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+      }
+    };
+    sidebarRef.current?.querySelector("button:not(:disabled)")?.focus();
+    document.addEventListener("keydown", onKeyDown);
+    media.addEventListener("change", onResize);
+    return () => { document.removeEventListener("keydown", onKeyDown); media.removeEventListener("change", onResize); };
+  }, [sidebarOpen]);
 
   useEffect(() => {
-    if (!storageKey || storageLoadedKey !== storageKey) return;
-    try {
-      window.sessionStorage.setItem(storageKey, JSON.stringify({ messages: messages.slice(-40), conversationId }));
-    } catch { /* A storage quota/privacy setting must not break message delivery. */ }
-  }, [messages, conversationId, storageKey, storageLoadedKey]);
+    if (!textareaRef.current) return;
+    textareaRef.current.style.height = "auto";
+    textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 144)}px`;
+    setCopied(null);
+  }, [activeTrip?.id]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages, pending]);
+  }, [messages, pending, activeTrip?.id]);
+
+  function setDraft(value) { if (activeTrip) history.updateTrip(activeTrip.id, { draft: value }); }
+  function setError(value) { if (activeTrip) history.updateTrip(activeTrip.id, { error: value }); }
 
   const statusLabel = useMemo(() => {
     if (service.state === "error") return t.unavailable;
@@ -301,20 +314,20 @@ export default function ChatShell() {
   }
 
   function startNewTrip() {
-    const controller = controllerRef.current;
-    controllerRef.current = null;
-    controller?.abort();
-    setMessages([]);
-    setConversationId(null);
-    setDraft("");
-    setError("");
-    setPending(false);
+    history.newTrip();
+    setSidebarOpen(false);
+    requestAnimationFrame(() => textareaRef.current?.focus());
+  }
+
+  function selectTrip(id) {
+    history.selectTrip(id);
+    setSidebarOpen(false);
     requestAnimationFrame(() => textareaRef.current?.focus());
   }
 
   async function signOut() {
-    startNewTrip();
-    try { if (storageKey) window.sessionStorage.removeItem(storageKey); } catch { /* Optional cache. */ }
+    for (const controller of requestsRef.current.values()) controller.abort();
+    requestsRef.current.clear();
     if (authClient) await authClient.auth.signOut();
   }
 
@@ -356,16 +369,19 @@ export default function ChatShell() {
   async function submitMessage(event) {
     event.preventDefault();
     const message = draft.trim();
-    if (!message || pending || controllerRef.current || message.length > MAX_MESSAGE_LENGTH) return;
+    if (!activeTrip || historyUnavailable || !message || pending || requestsRef.current.has(activeTrip.id) || message.length > MAX_MESSAGE_LENGTH) return;
+    const tripId = activeTrip.id;
+    const conversationId = activeTrip.conversationId;
+    const previousMessages = activeTrip.messages;
 
-    setError("");
-    setDraft("");
     resetComposerHeight();
-    setMessages((current) => [...current, { id: makeMessageId("user"), role: "user", content: message }]);
-    setPending(true);
+    const createdAt = new Date().toISOString();
+    history.updateTrip(tripId, (trip) => ({ ...trip, draft: "", error: "", pending: true,
+      title: trip.title || message.slice(0, 80), updatedAt: createdAt,
+      messages: [...trip.messages, { id: makeMessageId("user"), role: "user", content: message, createdAt }] }));
 
     const controller = new AbortController();
-    controllerRef.current = controller;
+    requestsRef.current.set(tripId, controller);
     let timedOut = false;
     const timeout = window.setTimeout(() => {
       timedOut = true;
@@ -389,7 +405,8 @@ export default function ChatShell() {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers,
-        body: JSON.stringify(buildChatBody({ message, conversationId, language })),
+        body: JSON.stringify({ ...buildChatBody({ message, conversationId, language }),
+          ...(demoMode ? { history: localHistoryForRequest(previousMessages) } : {}) }),
         signal: controller.signal
       });
       const payload = await response.json().catch(() => ({}));
@@ -400,62 +417,74 @@ export default function ChatShell() {
         throw requestError;
       }
       const parsed = parseChatResponse(payload);
-      if (controllerRef.current !== controller) return;
-      setConversationId(parsed.conversationId);
-      setMessages((current) => [...current, {
+      if (requestsRef.current.get(tripId) !== controller) return;
+      const repliedAt = new Date().toISOString();
+      history.updateTrip(tripId, (trip) => ({ ...trip, conversationId: parsed.conversationId,
+        updatedAt: repliedAt, messages: [...trip.messages, {
         id: makeMessageId("assistant"),
         role: "assistant",
         content: parsed.reply,
         sources: parsed.sources,
-        safety: parsed.safety
-      }]);
+        safety: parsed.safety,
+        createdAt: repliedAt
+      }] }));
     } catch (requestError) {
-      if (controllerRef.current !== controller) return;
+      if (requestsRef.current.get(tripId) !== controller) return;
       const status = timedOut ? 504 : requestError.status;
       if (requestError.name === "AbortError" && !timedOut) {
-        setError(language === "zh" ? "已停止生成回复。" : "Response stopped.");
+        history.updateTrip(tripId, { error: language === "zh" ? "已停止生成回复。" : "Response stopped." });
       } else {
-        setError(chatErrorMessage(status, language, requestError.serverMessage));
+        history.updateTrip(tripId, { error: chatErrorMessage(status, language, requestError.serverMessage) });
       }
       if (status === 401 && authClient) await authClient.auth.signOut();
-      if (status === 404) setConversationId(null);
+      if (status === 404) history.updateTrip(tripId, { conversationId: null });
     } finally {
       window.clearTimeout(timeout);
-      if (controllerRef.current === controller) {
-        controllerRef.current = null;
-        setPending(false);
-        requestAnimationFrame(() => textareaRef.current?.focus());
+      if (requestsRef.current.get(tripId) === controller) {
+        requestsRef.current.delete(tripId);
+        history.updateTrip(tripId, { pending: false });
       }
     }
   }
 
   function stopResponse() {
-    controllerRef.current?.abort();
+    requestsRef.current.get(activeTrip?.id)?.abort();
   }
 
-  const showLoading = service.state === "loading" || (!demoMode && !authReady);
+  const showLoading = service.state === "loading" || (!demoMode && !authReady) || (chatIdentity && !history.ready);
   const needsAuthentication = !demoMode && authReady && !session;
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <div>
+    <div className="app-shell grid min-h-dvh grid-cols-[288px_minmax(0,1fr)] max-[900px]:grid-cols-[235px_minmax(0,1fr)] max-[720px]:block">
+      {sidebarOpen && <button className="sidebar-backdrop" type="button" aria-label={t.closeTrips} onClick={() => { setSidebarOpen(false); historyButtonRef.current?.focus(); }} />}
+      <aside id="trips-sidebar" ref={sidebarRef} className={`sidebar ${sidebarOpen ? "is-open" : ""}`} aria-label={t.tripNavigation}>
+        <div className="sidebar-brand-row">
+          <div>
           <Brand />
           <p className="brand-tag">{t.brandTag}</p>
+          </div>
+          <button className="sidebar-close" type="button" aria-label={t.closeTrips} onClick={() => { setSidebarOpen(false); historyButtonRef.current?.focus(); }}><Icon name="close" size={20} /></button>
         </div>
-        <button className="new-trip-button" type="button" onClick={startNewTrip} disabled={pending}>
+        <button className="new-trip-button" type="button" onClick={startNewTrip} disabled={!history.ready}>
           <Icon name="plus" size={19} />{t.newTrip}
         </button>
-        <div className="trip-list">
+        <nav className="trip-list" aria-label={t.tripNavigation}>
           <p className="sidebar-label">{t.recent}</p>
-          <div className={`trip-item ${messages.length ? "active" : ""}`}>
+          <div className="trip-scroll">
+          {trips.map((trip) => <button key={trip.id} type="button" data-trip-id={trip.id}
+            className={`trip-item ${activeTrip?.id === trip.id ? "active" : ""}`}
+            aria-pressed={activeTrip?.id === trip.id} onClick={() => selectTrip(trip.id)}>
             <span className="trip-icon" aria-hidden="true"><Icon name="spark" size={17} /></span>
-            <span>
-              <strong>{messages[0]?.content?.slice(0, 34) || t.emptyTrip}</strong>
-              <small>{t.today}</small>
+            <span className="trip-description">
+              <strong>{trip.title || t.untitledTrip}</strong>
+              <small>
+                {new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : "en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(trip.updatedAt))}
+                {trip.pending && <span className="trip-pending" aria-label={t.thinking}> ···</span>}
+              </small>
             </span>
+          </button>)}
           </div>
-        </div>
+        </nav>
         <div className="sidebar-spacer" />
         <div className="trust-card">
           <span className="trust-icon"><Icon name="shield" size={18} /></span>
@@ -464,10 +493,12 @@ export default function ChatShell() {
         <p className="sidebar-disclaimer">{t.disclaimer}</p>
       </aside>
 
-      <main className="main-panel">
+      <main className="main-panel min-w-0" inert={sidebarOpen ? true : undefined}>
         <header className="topbar">
           <div className="mobile-brand"><Brand /></div>
-          <button className="mobile-new-trip" type="button" onClick={startNewTrip} disabled={pending} aria-label={t.newTrip}>
+          <button className="mobile-history" ref={historyButtonRef} type="button" aria-label={t.openTrips}
+            aria-expanded={sidebarOpen} aria-controls="trips-sidebar" onClick={() => setSidebarOpen(true)}><Icon name="menu" size={19} /></button>
+          <button className="mobile-new-trip" type="button" onClick={startNewTrip} disabled={!history.ready} aria-label={t.newTrip}>
             <Icon name="plus" size={19} />
           </button>
           <div className="service-pill"><span className={`status-dot ${service.state}`} />{statusLabel}</div>
@@ -496,14 +527,20 @@ export default function ChatShell() {
           <AuthPanel language={language} client={authClient} />
         ) : (
           <div className="chat-layout">
-            <section className={`conversation ${messages.length ? "has-messages" : ""}`} aria-label={t.today}>
-              {messages.length === 0 ? (
+            <section className={`conversation ${messages.length ? "has-messages" : ""}`} aria-label={activeTrip?.title || t.today}>
+              {historyUnavailable ? (
+                <div className="history-loading" role="status">
+                  {!activeTrip.historyError && <span className="loader" />}
+                  <p>{activeTrip.historyError ? t.historyError : t.historyLoading}</p>
+                  {activeTrip.historyError && <button className="primary-button" type="button" onClick={history.retryMessages}>{t.retry}</button>}
+                </div>
+              ) : messages.length === 0 ? (
                 <div className="welcome-panel">
                   <div className="welcome-seal" aria-hidden="true"><span>旅</span></div>
                   <p className="section-kicker">{t.welcomeKicker}</p>
                   <h1>{t.welcomeTitle}</h1>
                   <p className="welcome-copy">{t.welcomeBody}</p>
-                  <div className="suggestion-grid">
+                  <div className="suggestion-grid grid grid-cols-3 gap-3 text-left max-[900px]:grid-cols-1">
                     {t.suggestions.map((suggestion, index) => (
                       <button key={suggestion.title} type="button" className="suggestion-card" onClick={() => chooseSuggestion(suggestion.prompt)}>
                         <span className="suggestion-number">0{index + 1}</span>
@@ -529,6 +566,8 @@ export default function ChatShell() {
             </section>
 
             <div className="composer-area">
+              {history.storageFailed && <p className="history-notice" role="status">{t.storageError}</p>}
+              {history.syncFailed && <div className="history-notice" role="status">{t.syncError} <button type="button" onClick={history.retrySync}>{t.retry}</button></div>}
               {error && (
                 <div className="error-banner" role="alert">
                   <span>{error}</span>
@@ -539,13 +578,13 @@ export default function ChatShell() {
                 <label className="sr-only" htmlFor="chat-message">{t.composerLabel}</label>
                 <textarea id="chat-message" ref={textareaRef} rows="1" maxLength={MAX_MESSAGE_LENGTH}
                   placeholder={t.placeholder} value={draft} onChange={(event) => setDraft(event.target.value)}
-                  onInput={resizeTextarea} onKeyDown={onComposerKeyDown} disabled={pending} />
+                  onInput={resizeTextarea} onKeyDown={onComposerKeyDown} disabled={pending || historyUnavailable} />
                 <div className="composer-bottom">
                   <span className={`character-count ${draft.length > 1350 ? "near-limit" : ""}`}>{draft.length}/{MAX_MESSAGE_LENGTH}</span>
                   {pending ? (
                     <button className="send-button stop-button" type="button" onClick={stopResponse} aria-label={t.stop}><Icon name="stop" size={18} /></button>
                   ) : (
-                    <button className="send-button" type="submit" disabled={!draft.trim()} aria-label={t.send}><Icon name="send" size={18} /></button>
+                    <button className="send-button" type="submit" disabled={!draft.trim() || historyUnavailable} aria-label={t.send}><Icon name="send" size={18} /></button>
                   )}
                 </div>
               </form>
