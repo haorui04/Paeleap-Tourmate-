@@ -1,21 +1,19 @@
-# Paeleap Tourism Assistant — backend Day 1
+# Paeleap TourMate — integrated tourism chatbot
 
-**Status:** backend prototype committed on `feature/ai-backend-day1`. The frontend and production service configuration are separate workstreams.
+**Status:** the frontend and backend are integrated on the current `main` checkout. Start with [START-HERE.md](START-HERE.md) for the exact VS Code launch steps. The backend branch has already been merged; there is no need to switch branches.
 
-A bilingual, tourism-focused Next.js Route Handler with an OpenAI-compatible model adapter, curated Hangzhou heritage references, deterministic safety checks, conversation storage, Supabase Auth checks, and per-minute database quota.
+A bilingual Next.js application with a responsive chat interface, Supabase email authentication, an OpenAI-compatible model adapter, curated Hangzhou heritage references, deterministic safety checks, conversation storage, and a per-minute database quota.
 
 ## Local setup
 
 Requires Node.js 22+ (Next.js 16).
 
 ```bash
-git checkout feature/ai-backend-day1
-npm install
-cp .env.example .env.local
+npm ci
 npm run dev
 ```
 
-Generate and commit `package-lock.json` after `npm install` on a machine with registry access, then use `npm ci` in CI. The initial repository bootstrap could not download registry packages in the authoring environment.
+`package-lock.json` now records the installed dependency versions. The local `.env.local` file is already set up for sample responses without external credentials. On a fresh checkout, copy `.env.example` to `.env.local`, or create `.env.local` with the two local flags below. Keep all real credentials in `.env.local`, which Git ignores.
 
 For a **local mock-only** smoke test, keep these variables in `.env.local`:
 
@@ -24,7 +22,7 @@ ALLOW_LOCAL_DEMO=true
 AI_MOCK_MODE=true
 ```
 
-These modes are **automatically disabled in production**. Mock responses use curated data, not an AI API, and demo conversations are not persisted. They are intended only for frontend development.
+These modes are **automatically disabled in production**. Mock responses use curated data, not an AI API. Local conversation context is held in bounded process memory for up to 30 minutes, and the UI caches the current conversation per browser tab. Local mode does not write to Supabase and loses server context when the server restarts.
 
 ```bash
 curl http://localhost:3000/api/status
@@ -44,7 +42,8 @@ There was no clearly identified Supabase project for this application on 2026-10
 2. Run `supabase/schema.sql` in its SQL editor (or prepare and apply a migration with your team's CLI process).
 3. Use that project's URL and publishable key for `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`.
 4. Set `SUPABASE_SERVICE_ROLE_KEY` to the server-only **legacy service_role JWT** for the project. Never expose this to client code or commit it.
-5. Configure Supabase Auth in the frontend, then set `ALLOW_LOCAL_DEMO=false`.
+5. Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for the browser to the same project URL and publishable key. Enable email/password authentication and configure your application's URL in Supabase Auth.
+6. Set `ALLOW_LOCAL_DEMO=false`, restart the app, and sign in through the frontend. Set `AI_MOCK_MODE=false` and supply real provider credentials for live AI responses.
 
 The chat server validates the caller against Supabase Auth, verifies conversation ownership under RLS, loads the most recent 12 messages, atomically consumes one per-user per-minute quota slot (6/minute), and writes user/assistant messages through its server-only service-role client. Browser clients have no direct message INSERT policy.
 
@@ -90,7 +89,15 @@ To send user credentials from the frontend, get a valid Supabase session access 
 
 **GET `/api/status`** returns non-sensitive booleans describing configuration. It does not ping third-party services.
 
+`localDemoMode` describes the local authentication bypass, and `aiMockMode` describes whether answers use curated sample data. They are separate flags. Configuration flags reject example placeholders, but do not establish that external services are reachable.
+
 ## Components
+
+- `app/page.jsx`, `app/layout.jsx`, `app/globals.css` — root page and responsive visual shell.
+- `components/ChatShell.jsx` — bilingual chat, conversation state, cancellation, errors and verified reference links.
+- `components/AuthPanel.jsx` — Supabase account creation and sign-in.
+- `lib/client/` — browser Auth client and validated chat contract.
+- `next.config.mjs` — anchors Next.js to this project, avoiding unrelated ancestor lockfiles.
 
 - `app/api/chat/route.js` — validated bilingual chat API.
 - `lib/ai/provider.js` — configurable LLM adapter, context assembly, local mock.
@@ -108,16 +115,16 @@ npm test
 npm run build
 ```
 
-Before running the live demo, test both languages, auth ownership, 30 safety prompts, API errors, high concurrency, and provider cost limits. The project currently has automated unit/contract smoke tests, **not** a completed 30-case field evaluation.
+The automated suite includes authenticated API contract checks with simulated external services, ownership, quotas, safety statuses, provider errors, local context reuse, and frontend response validation. These tests do not replace a live test against your actual provider and Supabase project.
 
 ## Known limits and Day 2 handoff
 
 - Static knowledge covers four Hangzhou heritage entries and is not live route or booking data.
 - Prompt-injection and harmful-content checks are baseline heuristics, **not** a comprehensive safety guarantee.
 - Output validation is intentionally conservative; some useful timetable-like suggestions may be replaced with a verification warning.
-- Chat history is stored only with configured Supabase; local demo has no persistence.
+- Durable chat history requires configured Supabase. Local history is temporary process memory plus a per-tab browser cache.
 - Provider authentication and database schema require credentials and deployment configuration.
-- The frontend page is a placeholder and is owned by the teammate.
+- Real provider responses and live Supabase sign-in require credentials that have not been supplied in this project.
 - No production deployment has been performed yet.
 
-**Day 2:** connect the real provider and dedicated database, test live auth and RLS, pair 30 unguarded/guarded safety cases, add monitoring/cost budgets, and integrate frontend pull requests.
+**Next:** configure the real provider and dedicated database, then verify live authentication, RLS, provider behavior and spending controls before a public launch.

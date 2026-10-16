@@ -2,17 +2,15 @@ import { classifyInput, validateOutput } from "../../../lib/ai/safety.js";
 import { retrieveAttractions, sourceLinks } from "../../../lib/tourism/retrieval.js";
 import { generateReply } from "../../../lib/ai/provider.js";
 import { authenticate, ensureConversation, getRecentMessages, storeExchange, consumeQuota } from "../../../lib/db/supabase.js";
+import { localDemoEnabled } from "../../../lib/config.js";
 
 export const runtime = "nodejs";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const demoCounts = new Map();
+const demoConversations = new Map();
 
 function json(body, status = 200) {
   return Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
-}
-
-function demoAllowed() {
-  return process.env.NODE_ENV !== "production" && process.env.ALLOW_LOCAL_DEMO === "true";
 }
 
 function takeDemoSlot() {
@@ -41,13 +39,18 @@ export async function POST(request) {
       return json({ error: "conversationId must be a UUID or omitted" }, 400);
     }
 
-    const demo = demoAllowed();
+    const demo = localDemoEnabled();
     let user = null;
     let conversationId = body.conversationId || null;
     let history = [];
     if (demo) {
       if (!takeDemoSlot()) return json({ error: "Rate limit exceeded" }, 429);
       conversationId ||= crypto.randomUUID();
+      const now = Date.now();
+      for (const [id, record] of demoConversations) {
+        if (now - record.updatedAt > 30 * 60 * 1000) demoConversations.delete(id);
+      }
+      history = demoConversations.get(conversationId)?.messages || [];
     } else {
       const bearer = request.headers.get("authorization")?.match(/^Bearer\s+(.+)$/i)?.[1];
       if (!bearer) return json({ error: "Authentication required" }, 401);
@@ -66,7 +69,20 @@ export async function POST(request) {
     const verified = classified.reply ? { reply: rawReply, status: classified.status } : validateOutput(rawReply, language);
     const status = verified.status;
     const sources = status === "allowed" ? sourceLinks(items) : [];
-    if (!demo) await storeExchange(conversationId, body.message.trim(), verified.reply);
+    if (!demo) {
+      await storeExchange(conversationId, body.message.trim(), verified.reply);
+    } else {
+      if (!demoConversations.has(conversationId) && demoConversations.size >= 100) {
+        demoConversations.delete(demoConversations.keys().next().value);
+      }
+      demoConversations.set(conversationId, {
+        updatedAt: Date.now(),
+        messages: [...history,
+          { role: "user", content: body.message.trim() },
+          { role: "assistant", content: verified.reply.slice(0, 6000) }
+        ].slice(-12)
+      });
+    }
     return json({ reply: verified.reply, conversationId, sources, safety: { status } });
   } catch (error) {
     // Never return raw upstream response bodies, database errors, or credentials to clients.

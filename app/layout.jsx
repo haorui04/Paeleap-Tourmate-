@@ -1,8 +1,15 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "Paeleap Tourism Assistant",
-  description: "Bilingual tourism assistant prototype with safety checks"
+  title: "Paeleap TourMate",
+  description: "A bilingual, safety-aware AI tour companion for exploring Hangzhou",
+  applicationName: "Paeleap TourMate"
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#123f3c"
 };
 
 export default function RootLayout({ children }) {
