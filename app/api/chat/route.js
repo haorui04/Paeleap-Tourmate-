@@ -1,6 +1,7 @@
 import { classifyInput, validateOutput } from "../../../lib/ai/safety.js";
-import { retrieveAttractions, sourceLinks } from "../../../lib/tourism/retrieval.js";
-import { generateReply } from "../../../lib/ai/provider.js";
+import { selectFaq } from "../../../lib/ai/provider.js";
+import { getFaqBank } from "../../../lib/db/faq.js";
+import { tourismOnlyReply } from "../../../lib/tourism/faq-matching.js";
 import { authenticate, ensureConversation, getRecentMessages, storeExchange, consumeQuota } from "../../../lib/db/supabase.js";
 import { localDemoEnabled } from "../../../lib/config.js";
 
@@ -71,13 +72,17 @@ export async function POST(request) {
       history = await getRecentMessages(user, conversationId);
     }
 
-    const items = classified.status === "allowed" ? retrieveAttractions(body.message) : [];
-    const rawReply = classified.reply || await generateReply({
-      message: body.message.trim(), language, history, attractions: items
-    });
-    const verified = classified.reply ? { reply: rawReply, status: classified.status } : validateOutput(rawReply, language);
+    let faq = null;
+    let verified = { reply: classified.reply, status: classified.status };
+    if (classified.status === "allowed") {
+      const faqs = await getFaqBank();
+      const selection = await selectFaq({ message: body.message.trim(), language, history, faqs });
+      faq = selection ? faqs.find((item) => item.id === selection.faqId) : null;
+      verified = faq ? validateOutput(faq[language === "zh" ? "answer_zh" : "answer_en"], language)
+        : { reply: tourismOnlyReply(language), status: "redirected" };
+    }
     const status = verified.status;
-    const sources = status === "allowed" ? sourceLinks(items) : [];
+    const sources = status === "allowed" && faq ? faq.sources : [];
     if (!demo) {
       await storeExchange(conversationId, body.message.trim(), verified.reply);
     } else {
@@ -92,7 +97,8 @@ export async function POST(request) {
         ].slice(-12)
       });
     }
-    return json({ reply: verified.reply, conversationId, sources, safety: { status } });
+    return json({ reply: verified.reply, conversationId, sources, safety: { status },
+      ...(status === "allowed" && faq ? { faq: { id: faq.id, question: faq[language === "zh" ? "question_zh" : "question_en"], category: faq.category } } : {}) });
   } catch (error) {
     // Never return raw upstream response bodies, database errors, or credentials to clients.
     console.error("chat API error:", error instanceof Error ? error.message : "unknown");

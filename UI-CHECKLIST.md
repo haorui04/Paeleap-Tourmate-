@@ -25,12 +25,21 @@ This audit follows the six tasks in the supplied Day 1: UI Development screensho
 
 ## Verification
 
-- `npm test`: 43 passed, 0 failed.
+- `npm test`: 255 passed, 0 failed after the FAQ integration (the original UI-only audit had 43 tests).
 - `npm run build`: passed with Tailwind/PostCSS enabled.
 - Browser checks passed for separate trips, switching/drafts, message/source restoration, conversation UUID reuse, background replies, cancellation, timestamps, language persistence, actual browser close/reopen, mobile drawer, legacy migration and restricted storage.
 - No browser JavaScript errors in the completed history checks.
 
 The real AI provider and live Supabase account configuration remain external setup requirements. Authenticated history query shape and pagination are tested with a simulated client; no live Supabase credentials were available for an external-account test.
+
+## China-tourism FAQ integration (2026-10-16)
+
+- Exactly 100 bilingual question/answer pairs stored in local SQLite, with an optional server-only Supabase table and generated seed import.
+- Chat replies select a stored answer; unrelated or unmatched questions receive the bilingual China-tourism-only prompt. Safety responses take priority.
+- Offline matching is labeled honestly in the UI. Live AI selects only a known FAQ ID with confidence >=0.85; it cannot supply answer text.
+- The full 100-question bank was tested through the API in both languages. Provider parsing, errors, ownership and quota tests use simulated external services.
+- Actual browser checks passed for English paraphrases, Chinese aliases, bilingual redirects, safety overrides, separate trips, FAQ metadata after reload, mobile layout and drawer. No JavaScript errors or horizontal overflow were observed.
+- Current FAQ edits are in the working tree; they have not been published or included in the earlier UI commit cited below. See `FAQ-BANK.md` for configuration and limitations.
 
 ## Git publication
 

@@ -2,15 +2,16 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { POST } from "../app/api/chat/route.js";
 import { GET } from "../app/api/status/route.js";
+import { CHINA_TOURISM_FAQS } from "../data/china-tourism-faq.js";
 
 const id = "550e8400-e29b-41d4-a716-446655440000";
 const keys = ["NODE_ENV", "ALLOW_LOCAL_DEMO", "AI_MOCK_MODE", "AI_BASE_URL", "AI_API_KEY", "AI_MODEL",
-  "SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY", "SUPABASE_SERVICE_ROLE_KEY"];
+  "SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY", "SUPABASE_SERVICE_ROLE_KEY", "FAQ_BANK_SOURCE"];
 
 function configure(t, overrides = {}) {
   const saved = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
   Object.assign(process.env, {
-    NODE_ENV: "development", ALLOW_LOCAL_DEMO: "false", AI_MOCK_MODE: "true",
+    NODE_ENV: "development", ALLOW_LOCAL_DEMO: "false", AI_MOCK_MODE: "true", FAQ_BANK_SOURCE: "local",
     AI_BASE_URL: "https://provider.example.test/v1", AI_API_KEY: "test-provider-key", AI_MODEL: "test-model",
     SUPABASE_URL: "https://database.example.test", SUPABASE_PUBLISHABLE_KEY: "test-public-key",
     SUPABASE_SERVICE_ROLE_KEY: "test-server-only-key", ...overrides
@@ -58,7 +59,7 @@ function services(t, options = {}) {
       assert.equal(url.pathname, "/v1/chat/completions");
       assert.equal(headers.get("Authorization"), "Bearer test-provider-key");
       if (options.providerFailure) return Response.json({}, { status: 500 });
-      return Response.json({ choices: [{ message: { content: options.reply || "West Lake is a cultural landscape." } }] });
+      return Response.json({ choices: [{ message: { content: options.reply || '{"faqId":"CN061","confidence":0.98}' } }] });
     }
     throw new Error("Unexpected outbound request: " + url.pathname);
   });
@@ -77,6 +78,20 @@ test("signed-in chat enforces ownership, stores both turns and never leaks keys"
   assert.deepEqual(stored.body.map((message) => message.role), ["user", "assistant"]);
   assert.ok(stored.body[0].created_at < stored.body[1].created_at);
   assert.ok(!JSON.stringify(data).includes("test-server-only-key"));
+});
+
+test("all 100 bank questions in both languages return their exact stored answers through POST /api/chat", async (t) => {
+  configure(t);
+  services(t);
+  for (const faq of CHINA_TOURISM_FAQS) for (const language of ["en", "zh"]) {
+    const response = await POST(request({ message: faq[`question_${language}`], language, conversationId: id }));
+    assert.equal(response.status, 200, `${faq.id}/${language}`);
+    const data = await response.json();
+    assert.equal(data.safety.status, "allowed", `${faq.id}/${language}`);
+    assert.equal(data.reply, faq[`answer_${language}`]);
+    assert.equal(data.faq.id, faq.id);
+    assert.deepEqual(data.sources, faq.sources);
+  }
 });
 
 test("expired sessions cannot call the provider or database quota", async (t) => {
@@ -117,17 +132,47 @@ test("authenticated safety responses bypass the model and carry no citations", a
   assert.equal(calls.some((call) => call.url.hostname === "provider.example.test"), false);
 });
 
-test("provider calls include server history and sanitized output reaches the UI contract", async (t) => {
+test("provider free text cannot become an answer and server history remains bounded", async (t) => {
   configure(t, { AI_MOCK_MODE: "false" });
   const calls = services(t, { reply: "The attraction closes at 17:00." });
   const response = await POST(request());
   const data = await response.json();
   assert.equal(response.status, 200);
-  assert.equal(data.safety.status, "sanitized");
+  assert.equal(data.safety.status, "redirected");
+  assert.ok(!data.reply.includes("17:00"));
   assert.deepEqual(data.sources, []);
   const provider = calls.find((call) => call.url.hostname === "provider.example.test");
   assert.deepEqual(provider.body.messages.slice(1, 3).map((message) => message.role), ["user", "assistant"]);
   assert.equal(provider.body.messages[0].role, "system");
+});
+
+test("AI selects an ID but only its exact stored answer reaches the client and history", async (t) => {
+  configure(t, { AI_MOCK_MODE: "false" });
+  const calls = services(t);
+  const data = await (await POST(request())).json();
+  const faq = CHINA_TOURISM_FAQS.find((row) => row.id === "CN061");
+  assert.equal(data.reply, faq.answer_en);
+  assert.equal(data.faq.id, faq.id);
+  assert.deepEqual(data.sources, faq.sources);
+  const stored = calls.find((call) => call.url.pathname === "/rest/v1/messages" && call.method === "POST");
+  assert.equal(stored.body[1].content, faq.answer_en);
+  const provider = calls.find((call) => call.url.hostname === "provider.example.test");
+  assert.match(provider.body.messages[0].content, /CN100/);
+  assert.equal(provider.body.max_tokens, 80);
+});
+
+test("AI null, unknown ID and low confidence all return the tourism-only prompt", async (t) => {
+  configure(t, { AI_MOCK_MODE: "false" });
+  for (const reply of ['{"faqId":null,"confidence":0}', '{"faqId":"CN999","confidence":1}', '{"faqId":"CN061","confidence":0.3}']) {
+    const calls = services(t, { reply });
+    const data = await (await POST(request())).json();
+    assert.equal(data.safety.status, "redirected");
+    assert.match(data.reply, /tourism in China/);
+    assert.equal(data.faq, undefined);
+    assert.deepEqual(data.sources, []);
+    assert.ok(calls.some((call) => call.url.hostname === "provider.example.test"));
+    t.mock.restoreAll();
+  }
 });
 
 test("provider failures return 502 without writing a partial exchange", async (t) => {

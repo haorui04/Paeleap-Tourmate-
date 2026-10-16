@@ -10,6 +10,9 @@ export async function GET() {
     aiConfigured: [process.env.AI_BASE_URL, process.env.AI_API_KEY, process.env.AI_MODEL].every(hasConfiguredValue),
     supabaseConfigured: [process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY, process.env.SUPABASE_SERVICE_ROLE_KEY].every(hasConfiguredValue),
     localDemoMode: localDemo,
-    aiMockMode: mockAiEnabled()
+    aiMockMode: mockAiEnabled(),
+    // Configuration only, not a database/provider health check.
+    faqBank: { source: process.env.FAQ_BANK_SOURCE || "local", expectedCount: 100,
+      matchingMode: mockAiEnabled() ? "offline" : "ai" }
   }, { headers: { "Cache-Control": "no-store" } });
 }

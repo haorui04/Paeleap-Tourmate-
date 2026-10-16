@@ -29,25 +29,26 @@ const text = {
     storageError: "This browser couldn't save your history. Chats will remain available while this page is open.",
     emptyTrip: "Your first plan starts here",
     trustTitle: "Designed for safer travel",
-    trustBody: "TourMate checks requests against travel-safety rules and uses curated heritage sources.",
+    trustBody: "100 bilingual China-travel FAQs, with safety checks before every answer.",
     disclaimer: "AI can make mistakes. Confirm live hours, prices and transport with official providers.",
     signOut: "Sign out",
-    localDemo: "Local demo",
+    localDemo: "Offline FAQ mode",
     localAi: "Local AI",
     privateSession: "Private session",
     unavailable: "Status unavailable",
     connectionTitle: "Let's reconnect",
     connectionBody: "TourMate couldn't reach the chat service. Check your connection and try again.",
     retry: "Try again",
-    welcomeKicker: "WELCOME TO HANGZHOU",
+    welcomeKicker: "YOUR CHINA TRAVEL COMPANION",
     welcomeTitle: "Where should we explore?",
-    welcomeBody: "Ask for heritage highlights, a gentle one-day plan, or context about the places around West Lake.",
+    welcomeBody: "Explore 100 travel FAQs covering arrivals, payments, transport, food and sightseeing in China. Answers come from our question bank, not live booking data.",
     composerLabel: "Ask TourMate",
-    placeholder: "Ask about Hangzhou, West Lake, or a day itinerary…",
+    placeholder: "Ask about travel in China…",
     send: "Send message",
     stop: "Stop response",
     enterHint: "Enter to send · Shift + Enter for a new line",
-    sourceTitle: "Verified references",
+    sourceTitle: "Official references",
+    faqLabel: "Travel FAQ",
     copied: "Copied",
     copy: "Copy response",
     dismiss: "Dismiss",
@@ -55,9 +56,9 @@ const text = {
     loading: "Preparing your travel space…",
     today: "Current conversation",
     suggestions: [
-      { title: "Plan a calm day", body: "Create a one-day Hangzhou itinerary", prompt: "Plan a calm one-day trip around Hangzhou's verified heritage attractions." },
-      { title: "Explore West Lake", body: "Learn what makes it significant", prompt: "Tell me about West Lake and why it is culturally significant." },
-      { title: "Walk through history", body: "Compare two heritage places", prompt: "Compare West Lake and the Grand Canal for a history-focused visitor." }
+      { title: "Getting around", body: "Book a train with your passport", prompt: "How do I book a train ticket in China?" },
+      { title: "Pay with confidence", body: "Learn about visitor payments", prompt: "Can foreign tourists use Alipay?" },
+      { title: "Explore West Lake", body: "Learn what makes it significant", prompt: "What is West Lake and why is it culturally significant?" }
     ]
   },
   zh: {
@@ -74,25 +75,26 @@ const text = {
     storageError: "浏览器无法保存历史记录。当前页面保持打开时仍可查看对话。",
     emptyTrip: "从这里开始你的第一个计划",
     trustTitle: "为安心旅行而设计",
-    trustBody: "TourMate 会依据旅行安全规则检查请求，并使用经过整理的遗产资料。",
+    trustBody: "100 题中英双语中国旅游问答，每次回复前均先执行安全检查。",
     disclaimer: "AI 可能出错。实时开放时间、票价和交通信息请以官方渠道为准。",
     signOut: "退出登录",
-    localDemo: "本地演示",
+    localDemo: "离线问答模式",
     localAi: "本地 AI",
     privateSession: "私密会话",
     unavailable: "状态不可用",
     connectionTitle: "请重新连接",
     connectionBody: "无法连接到聊天服务，请检查网络后重试。",
     retry: "重试",
-    welcomeKicker: "欢迎来到杭州",
+    welcomeKicker: "你的中国旅行伴侣",
     welcomeTitle: "今天想去哪里探索？",
-    welcomeBody: "你可以询问文化遗产亮点、轻松的一日游计划，或了解西湖周边景点。",
+    welcomeBody: "100 题旅游问答涵盖入境准备、支付、交通、餐饮和景点游览。回复来自问答库，不包含实时预订数据。",
     composerLabel: "询问 TourMate",
-    placeholder: "询问杭州、西湖或一日游行程…",
+    placeholder: "询问中国旅游相关问题…",
     send: "发送消息",
     stop: "停止回复",
     enterHint: "按 Enter 发送 · Shift + Enter 换行",
-    sourceTitle: "已核实参考资料",
+    sourceTitle: "官方参考资料",
+    faqLabel: "旅游问答",
     copied: "已复制",
     copy: "复制回复",
     dismiss: "关闭",
@@ -100,9 +102,9 @@ const text = {
     loading: "正在准备你的旅行空间…",
     today: "当前对话",
     suggestions: [
-      { title: "规划轻松的一天", body: "制定杭州一日游行程", prompt: "请根据已核实的杭州文化遗产景点，规划轻松的一日游。" },
-      { title: "探索西湖", body: "了解它的重要意义", prompt: "请介绍西湖及其文化意义。" },
-      { title: "漫步历史", body: "比较两处文化遗产", prompt: "请为喜欢历史的游客比较西湖和大运河。" }
+      { title: "轻松出行", body: "了解如何使用护照购买火车票", prompt: "在中国如何预订火车票？" },
+      { title: "安心支付", body: "了解游客支付方式", prompt: "外国游客可以使用支付宝吗？" },
+      { title: "探索西湖", body: "了解它的重要意义", prompt: "西湖是什么，为什么具有文化意义？" }
     ]
   }
 };
@@ -157,6 +159,7 @@ function Message({ message, language, copied, onCopy }) {
               {new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : "en-US", { hour: "2-digit", minute: "2-digit" }).format(new Date(message.createdAt))}
             </time>}
             {assistant && <SafetyBadge status={message.safety} language={language} />}
+            {assistant && message.faq && <span className="grounded-label" title={message.faq.question}>{t.faqLabel} · {message.faq.id}</span>}
             {message.safety === "allowed" && message.sources?.length > 0 && (
               <span className="grounded-label"><Icon name="shield" size={14} />{SAFETY_LABELS[language].allowed}</span>
             )}
@@ -426,6 +429,7 @@ export default function ChatShell() {
         content: parsed.reply,
         sources: parsed.sources,
         safety: parsed.safety,
+        ...(parsed.faq ? { faq: parsed.faq } : {}),
         createdAt: repliedAt
       }] }));
     } catch (requestError) {
