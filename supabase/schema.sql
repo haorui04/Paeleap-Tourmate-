@@ -26,14 +26,23 @@ create table if not exists public.chat_usage_minute (
   primary key (user_id, minute_start)
 );
 
+create table if not exists public.chat_usage_day (
+ user_id uuid not null references auth.users(id) on delete cascade,
+ day_start date not null,
+ used integer not null default 0 check (used >= 0),
+ primary key (user_id, day_start)
+);
+
 alter table public.conversations enable row level security;
 alter table public.messages enable row level security;
 alter table public.chat_usage_minute enable row level security;
+alter table public.chat_usage_day enable row level security;
 
 -- Expose only the minimum necessary to authenticated browser clients.
 revoke all on public.conversations from anon, authenticated;
 revoke all on public.messages from anon, authenticated;
 revoke all on public.chat_usage_minute from anon, authenticated;
+revoke all on public.chat_usage_day from anon, authenticated;
 grant select, insert on public.conversations to authenticated;
 grant select on public.messages to authenticated;
 -- Deliberately NO insert/update/delete access for browser clients on messages.
@@ -55,26 +64,33 @@ create policy "read_own_messages" on public.messages
 
 -- Called only by the privileged server AFTER verifying the user's JWT.
 -- Atomic UPSERT avoids concurrency gaps in a per-minute quota.
+-- Two atomic user quotas, six/minute and sixty/day (UTC). Failure rolls back both increments.
 create or replace function public.consume_chat_quota(p_user_id uuid, p_max_requests integer)
-returns boolean
-language plpgsql
-security invoker
-set search_path = ''
+returns boolean language plpgsql security invoker set search_path = ''
 as $$
 declare v_used integer;
 begin
-  if p_user_id is null or p_max_requests not between 1 and 100 then
-    return false;
-  end if;
-  insert into public.chat_usage_minute(user_id, minute_start, used)
-    values (p_user_id, date_trunc('minute', now()), 1)
-  on conflict (user_id, minute_start) do update
-    set used = public.chat_usage_minute.used + 1
-    where public.chat_usage_minute.used < p_max_requests
-  returning used into v_used;
-  return v_used is not null;
+  if p_user_id is null or p_max_requests not between 1 and 100 then return false; end if;
+  begin
+    insert into public.chat_usage_day(user_id,day_start,used)
+    values (p_user_id,(now() at time zone 'UTC')::date,1)
+    on conflict (user_id,day_start) do update
+      set used=public.chat_usage_day.used+1
+      where public.chat_usage_day.used < 60
+    returning used into v_used;
+    if v_used is null then raise exception 'daily limit' using errcode='P0001'; end if;
+    v_used:=null;
+    insert into public.chat_usage_minute(user_id,minute_start,used)
+    values (p_user_id,date_trunc('minute',now()),1)
+    on conflict (user_id,minute_start) do update
+      set used=public.chat_usage_minute.used+1
+      where public.chat_usage_minute.used < p_max_requests
+    returning used into v_used;
+    if v_used is null then raise exception 'minute limit' using errcode='P0001'; end if;
+  exception when sqlstate 'P0001' then return false;
+  end;
+  return true;
 end;
 $$;
-
-revoke all on function public.consume_chat_quota(uuid, integer) from public, anon, authenticated;
-grant execute on function public.consume_chat_quota(uuid, integer) to service_role;
+revoke all on function public.consume_chat_quota(uuid,integer) from public,anon,authenticated;
+grant execute on function public.consume_chat_quota(uuid,integer) to service_role;
