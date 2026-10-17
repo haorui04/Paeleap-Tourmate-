@@ -24,12 +24,16 @@ export default function useTripHistory(identity, client) {
       raw ||= window.sessionStorage.getItem(tripStorageKey(identity));
       legacy = window.sessionStorage.getItem(`paeleap.chat.v1.${identity}`);
     } catch { /* Empty history still works without browser storage. */ }
-    setCollection({ owner: identity, ...restoreTripCollection(raw, legacy) });
+    const restored = restoreTripCollection(raw, legacy);
+    if (identity !== "demo") {
+      restored.trips = restored.trips.map((trip) => ({ ...trip, messages: [], loaded: !trip.conversationId }));
+    }
+    setCollection({ owner: identity, ...restored });
   }, [identity]);
 
   useEffect(() => {
     if (!identity || collection.owner !== identity) return;
-    const serialized = serializeTripCollection(collection);
+    const serialized = serializeTripCollection(collection, { includeMessages: identity === "demo" });
     let persistent = false;
     try { window.localStorage.setItem(tripStorageKey(identity), serialized); persistent = true; } catch { /* Report persistence failure. */ }
     try { window.sessionStorage.setItem(tripStorageKey(identity), serialized); } catch { /* Optional fallback. */ }

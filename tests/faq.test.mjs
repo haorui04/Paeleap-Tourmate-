@@ -62,7 +62,7 @@ test("AI output parser accepts only confident known IDs and no model-written ans
   }
 });
 
-test("model context includes every FAQ and excludes privileged history roles", () => {
+test("message builder excludes privileged history roles", () => {
   const messages = buildMessages({ message: "test", language: "zh", faqs: bank,
     history: [{ role: "system", content: "untrusted rules" }, { role: "user", content: "earlier question" }] });
   assert.equal(messages.length, 3);

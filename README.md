@@ -1,8 +1,10 @@
+> **Production deployment:** Follow [DEPLOYMENT.md](DEPLOYMENT.md). Real provider and Supabase integration must be validated before enabling public traffic.
+
 # Paeleap TourMate — integrated tourism chatbot
 
 **Status:** frontend and backend are integrated on `feature/frontend-chat`. The chat endpoint now selects from exactly 100 bilingual China-tourism FAQs. Start with [START-HERE.md](START-HERE.md) for VS Code launch steps and [FAQ-BANK.md](FAQ-BANK.md) for database and matching details. No branch switch is required.
 
-A bilingual Next.js application with a responsive chat interface, a local SQLite FAQ database (optional Supabase FAQ storage), AI question selection, deterministic safety checks, persistent trip history, Supabase authentication, and a per-minute quota.
+A bilingual Next.js application with a responsive chat interface, a local SQLite FAQ database for development (required Supabase FAQ storage in production), AI question selection, deterministic safety checks, persistent trip history, Supabase authentication, and a per-minute quota.
 
 ## Local setup
 

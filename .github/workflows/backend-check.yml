@@ -1,7 +1,7 @@
 name: Application checks
 on:
   push:
-    branches: [main, frontend, feature/ai-backend-day1, feature/frontend-chat]
+    branches: [main, frontend, feature/ai-backend-day1, feature/frontend-chat, feature/tourmate-production-hardened]
   pull_request:
     branches: [main]
 

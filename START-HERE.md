@@ -3,7 +3,7 @@
 The frontend files have been merged directly into this project. Use this folder as the application root:
 
 ```text
-C:\Users\haoru\Downloads\Paeleap\Paeleap AI Chatbot\paeleap-chatbot
+<path-to-your-project>\paeleap-chatbot
 ```
 
 ## 1. Open the project and terminal
@@ -11,7 +11,7 @@ C:\Users\haoru\Downloads\Paeleap\Paeleap AI Chatbot\paeleap-chatbot
 In VS Code, choose **File > Open Folder** and select the folder above. Choose **Terminal > New Terminal**, then run:
 
 ```powershell
-cd "C:\Users\haoru\Downloads\Paeleap\Paeleap AI Chatbot\paeleap-chatbot"
+cd "<path-to-your-project>\paeleap-chatbot"
 npm run dev
 ```
 

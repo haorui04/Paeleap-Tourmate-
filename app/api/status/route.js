@@ -4,15 +4,19 @@ export const runtime = "nodejs";
 
 export async function GET() {
   const localDemo = localDemoEnabled();
+  const ready = [process.env.AI_BASE_URL, process.env.AI_API_KEY, process.env.AI_MODEL,
+    process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY, process.env.SUPABASE_SERVICE_ROLE_KEY,
+    process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY].every(hasConfiguredValue) &&
+    (process.env.FAQ_BANK_SOURCE || "supabase") === "supabase";
   return Response.json({
     service: "paeleap-tourism-ai",
-    status: "ok",
+    status: process.env.NODE_ENV === "production" && !ready ? "unconfigured" : "ok",
     aiConfigured: [process.env.AI_BASE_URL, process.env.AI_API_KEY, process.env.AI_MODEL].every(hasConfiguredValue),
     supabaseConfigured: [process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY, process.env.SUPABASE_SERVICE_ROLE_KEY].every(hasConfiguredValue),
     localDemoMode: localDemo,
     aiMockMode: mockAiEnabled(),
     // Configuration only, not a database/provider health check.
-    faqBank: { source: process.env.FAQ_BANK_SOURCE || "local", expectedCount: 100,
+    faqBank: { source: process.env.FAQ_BANK_SOURCE || (process.env.NODE_ENV === "production" ? "supabase" : "local"), expectedCount: 100,
       matchingMode: mockAiEnabled() ? "offline" : "ai" }
-  }, { headers: { "Cache-Control": "no-store" } });
+  }, { status: process.env.NODE_ENV === "production" && !ready ? 503 : 200, headers: { "Cache-Control": "no-store" } });
 }

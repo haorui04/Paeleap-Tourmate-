@@ -157,7 +157,8 @@ test("AI selects an ID but only its exact stored answer reaches the client and h
   const stored = calls.find((call) => call.url.pathname === "/rest/v1/messages" && call.method === "POST");
   assert.equal(stored.body[1].content, faq.answer_en);
   const provider = calls.find((call) => call.url.hostname === "provider.example.test");
-  assert.match(provider.body.messages[0].content, /CN100/);
+  assert.match(provider.body.messages[0].content, /CN061/);
+  assert.doesNotMatch(provider.body.messages[0].content, /CN100/);
   assert.equal(provider.body.max_tokens, 80);
 });
 
