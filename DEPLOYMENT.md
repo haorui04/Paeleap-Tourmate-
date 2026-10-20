@@ -28,3 +28,21 @@ If Miaoqu returns a successful HTTP response but the body has no OpenAI/Response
 ### Sub2API protocol verification
 
 The supplied Codex CLI configuration specifies `wire_api = "responses"`, `base_url = "https://api.miaoquai.com/v1"`, and model `deepseek-v4-pro`. The server now POSTs to `https://api.miaoquai.com/v1/responses` with the Responses API JSON shape, instead of sending Chat Completions data to the API base URL. Static/mocked tests verify the request schema and parser, but **only a live signed-in request** can verify compatibility with this particular Miaoqu provider account. The AI is still limited to selecting a curated FAQ ID; expanding to generative RAG is a separate project.
+
+
+## Live Miaoqu Responses debugging (2026-10-20)
+
+When the Responses endpoint rejects the request, Vercel logs
+`Miaoqu Responses upstream rejection` with an HTTP status and
+**redacted boolean diagnostics only**. Logs never contain API keys,
+raw provider bodies or user questions. The chatbot's existing
+curated-FAQ fallback remains active; it should not be interpreted as
+proof of an AI-generated answer. Check the status on a fresh request:
+- 400 / 422: inspect unsupported request-field flags or model access with the provider.
+- 401 / 403: verify the encrypted provider key and Responses entitlement.
+- 404: verify the correct inference endpoint and model.
+- 429: provider rate limit or quota.
+Do not disable safety filtering or turn on arbitrary generative answers
+to hide upstream failures. The current system selects FAQ IDs, not free-text
+responses; a separate approved RAG implementation is required for open-ended
+grounded answers.
