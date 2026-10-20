@@ -84,3 +84,101 @@ test("provider rejects success JSON without assistant text, logging only shape f
   assert.doesNotMatch(JSON.stringify(logs),/private error/);
   assert.equal(logs[0][1].hasErrorObject,true);
 });
+
+
+import { responsesEndpoint, responsesFaqPayload, requestResponsesFaqSelection } from "../lib/ai/provider.js";
+
+const responsesArgs = {
+  ...args,
+  url: "https://api.miaoquai.com/v1/responses"
+};
+const responsesOk = (content = '{"faqId":"CN061","confidence":0.99}') =>
+  Response.json({
+    id: "resp_test", object: "response", status: "completed",
+    output: [
+      { type: "reasoning", content: [{ type: "reasoning_text", text: "internal-only reasoning" }] },
+      { type: "message", role: "assistant", content: [{ type: "output_text", text: content }] }
+    ]
+  });
+
+test("Sub2API base /v1 resolves to POST /v1/responses exactly once", () => {
+  assert.equal(responsesEndpoint(args.url), responsesArgs.url);
+  assert.equal(responsesEndpoint("https://api.miaoquai.com/v1/responses"), responsesArgs.url);
+  assert.equal(responsesEndpoint("https://api.miaoquai.com/v1/chat/completions"), responsesArgs.url);
+  assert.throws(() => responsesEndpoint("http://api.miaoquai.com/v1"), /HTTPS/);
+});
+
+test("Sub2API sends proper Responses wire format and disables storage", async () => {
+  let calls = 0;
+  const content = await requestResponsesFaqSelection({...responsesArgs,fetchImpl:async(url, init) => {
+    calls++;
+    assert.equal(url, responsesArgs.url);
+    assert.equal(init.method, "POST");
+    assert.equal(init.headers.Authorization, "Bearer fake-key");
+    const data = JSON.parse(init.body);
+    assert.equal(data.model, "deepseek-v4-pro");
+    assert.deepEqual(data.input, args.messages);
+    assert.equal(data.stream, false);
+    assert.equal(data.store, false);
+    assert.deepEqual(data.reasoning, { effort: "none" });
+    assert.deepEqual(data.text, { format: { type: "json_object" } });
+    for (const key of ["messages", "thinking", "response_format", "max_tokens"]) assert.equal(key in data, false);
+    return responsesOk();
+  }});
+  assert.equal(calls, 1);
+  assert.deepEqual(parseFaqSelection(content, [{id:"CN061"}]), {faqId:"CN061",confidence:0.99});
+});
+
+for (const [error, absent, retained] of [
+  ["Unsupported parameter reasoning.effort", "reasoning", "text"],
+  ["Unrecognized text.format", "text", "reasoning"],
+]) test("Sub2API optional field compatibility: "+absent, async () => {
+  const bodies = [];
+  await requestResponsesFaqSelection({...responsesArgs,fetchImpl:async(_url,init)=>{
+    bodies.push(JSON.parse(init.body));
+    return bodies.length === 1
+      ? Response.json({error:{message:error}},{status:400})
+      : responsesOk();
+  }});
+  assert.equal(bodies.length,2);
+  assert.equal(absent in bodies[1],false);
+  assert.equal(retained in bodies[1],true);
+  assert.equal(bodies[1].store,false);
+});
+
+test("Sub2API refuses failed or incomplete Responses and ignores reasoning-only outputs", async () => {
+  for (const data of [
+    {status:"incomplete",output:[{type:"message",role:"assistant",content:[{type:"output_text",text:'{"faqId":"CN061","confidence":0.99}'}]}]},
+    {status:"failed",output:[]},
+    {status:"completed",output:[{type:"reasoning",content:[{type:"reasoning_text",text:'{"faqId":"CN061","confidence":0.99}'}]}]}
+  ]) {
+    await assert.rejects(requestResponsesFaqSelection({...responsesArgs,fetchImpl:async()=>Response.json(data)}),/invalid AI/);
+  }
+});
+
+test("Sub2API does not retry invalid credentials, rate limits, unknown models, or server errors", async()=>{
+  for (const status of [400,401,403,404,429,500]) {
+    let calls=0;
+    await assert.rejects(requestResponsesFaqSelection({...responsesArgs,fetchImpl:async()=>{calls++;return Response.json({error:{message:"Model not found"}},{status});}}),new RegExp(String(status)));
+    assert.equal(calls,1);
+  }
+});
+
+test("Sub2API plain fallback preserves privacy setting", async () => {
+  const bodies=[];
+  await requestResponsesFaqSelection({...responsesArgs,fetchImpl:async(_url,init)=>{
+    bodies.push(JSON.parse(init.body));
+    return bodies.length===1
+      ? Response.json({error:{message:"Unsupported reasoning.effort and text.format"}},{status:422})
+      : responsesOk();
+  }});
+  assert.equal(bodies.length,2);
+  assert.equal(bodies[1].store,false);
+  assert.equal("reasoning" in bodies[1],false);
+  assert.equal("text" in bodies[1],false);
+});
+
+test("Sub2API output cannot bypass known FAQ verification", async () => {
+  const content=await requestResponsesFaqSelection({...responsesArgs,fetchImpl:async()=>responsesOk('I invented an opening time')});
+  assert.equal(parseFaqSelection(content,[{id:"CN061"}]),null);
+});
