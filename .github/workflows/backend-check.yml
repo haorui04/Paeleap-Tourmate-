@@ -1,7 +1,7 @@
-name: Backend checks
+name: Application checks
 on:
   push:
-    branches: [feature/ai-backend-day1]
+    branches: [main, frontend, feature/ai-backend-day1, feature/frontend-chat, feature/tourmate-production-hardened]
   pull_request:
     branches: [main]
 
@@ -13,6 +13,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: npm install --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund
+      - run: npm run faq:check
       - run: npm test
       - run: npm run build

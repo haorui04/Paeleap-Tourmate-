@@ -1,18 +1,17 @@
 import { classifyInput, validateOutput } from "../../../lib/ai/safety.js";
-import { retrieveAttractions, sourceLinks } from "../../../lib/tourism/retrieval.js";
-import { generateReply } from "../../../lib/ai/provider.js";
+import { selectFaq } from "../../../lib/ai/provider.js";
+import { getFaqBank } from "../../../lib/db/faq.js";
+import { tourismOnlyReply } from "../../../lib/tourism/faq-matching.js";
 import { authenticate, ensureConversation, getRecentMessages, storeExchange, consumeQuota } from "../../../lib/db/supabase.js";
+import { localDemoEnabled } from "../../../lib/config.js";
 
 export const runtime = "nodejs";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const demoCounts = new Map();
+const demoConversations = new Map();
 
 function json(body, status = 200) {
   return Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
-}
-
-function demoAllowed() {
-  return process.env.NODE_ENV !== "production" && process.env.ALLOW_LOCAL_DEMO === "true";
 }
 
 function takeDemoSlot() {
@@ -23,6 +22,15 @@ function takeDemoSlot() {
   demoCounts.clear();
   demoCounts.set(bucket, record + 1);
   return true;
+}
+
+function localHistory(value) {
+  if (!Array.isArray(value)) return [];
+  // Browser history is permitted only in local mode and cannot add system roles.
+  const history = value.slice(-12).filter((message) => message &&
+    ["user", "assistant"].includes(message.role) && typeof message.content === "string")
+    .map(({ role, content }) => ({ role, content: content.slice(0, 1500) }));
+  return JSON.stringify(history).length <= 2100 ? history : [];
 }
 
 export async function POST(request) {
@@ -41,13 +49,18 @@ export async function POST(request) {
       return json({ error: "conversationId must be a UUID or omitted" }, 400);
     }
 
-    const demo = demoAllowed();
+    const demo = localDemoEnabled();
     let user = null;
     let conversationId = body.conversationId || null;
     let history = [];
     if (demo) {
       if (!takeDemoSlot()) return json({ error: "Rate limit exceeded" }, 429);
       conversationId ||= crypto.randomUUID();
+      const now = Date.now();
+      for (const [id, record] of demoConversations) {
+        if (now - record.updatedAt > 30 * 60 * 1000) demoConversations.delete(id);
+      }
+      history = demoConversations.get(conversationId)?.messages || localHistory(body.history);
     } else {
       const bearer = request.headers.get("authorization")?.match(/^Bearer\s+(.+)$/i)?.[1];
       if (!bearer) return json({ error: "Authentication required" }, 401);
@@ -59,15 +72,33 @@ export async function POST(request) {
       history = await getRecentMessages(user, conversationId);
     }
 
-    const items = classified.status === "allowed" ? retrieveAttractions(body.message) : [];
-    const rawReply = classified.reply || await generateReply({
-      message: body.message.trim(), language, history, attractions: items
-    });
-    const verified = classified.reply ? { reply: rawReply, status: classified.status } : validateOutput(rawReply, language);
+    let faq = null;
+    let verified = { reply: classified.reply, status: classified.status };
+    if (classified.status === "allowed") {
+      const faqs = await getFaqBank();
+      const selection = await selectFaq({ message: body.message.trim(), language, history, faqs });
+      faq = selection ? faqs.find((item) => item.id === selection.faqId) : null;
+      verified = faq ? validateOutput(faq[language === "zh" ? "answer_zh" : "answer_en"], language)
+        : { reply: tourismOnlyReply(language), status: "redirected" };
+    }
     const status = verified.status;
-    const sources = status === "allowed" ? sourceLinks(items) : [];
-    if (!demo) await storeExchange(conversationId, body.message.trim(), verified.reply);
-    return json({ reply: verified.reply, conversationId, sources, safety: { status } });
+    const sources = status === "allowed" && faq ? faq.sources : [];
+    if (!demo) {
+      await storeExchange(conversationId, body.message.trim(), verified.reply);
+    } else {
+      if (!demoConversations.has(conversationId) && demoConversations.size >= 100) {
+        demoConversations.delete(demoConversations.keys().next().value);
+      }
+      demoConversations.set(conversationId, {
+        updatedAt: Date.now(),
+        messages: [...history,
+          { role: "user", content: body.message.trim() },
+          { role: "assistant", content: verified.reply.slice(0, 6000) }
+        ].slice(-12)
+      });
+    }
+    return json({ reply: verified.reply, conversationId, sources, safety: { status },
+      ...(status === "allowed" && faq ? { faq: { id: faq.id, question: faq[language === "zh" ? "question_zh" : "question_en"], category: faq.category } } : {}) });
   } catch (error) {
     // Never return raw upstream response bodies, database errors, or credentials to clients.
     console.error("chat API error:", error instanceof Error ? error.message : "unknown");
