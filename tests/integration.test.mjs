@@ -56,7 +56,7 @@ function services(t, options = {}) {
       return Response.json([{ role: "assistant", content: "Earlier response" }, { role: "user", content: "Earlier question" }]);
     }
     if (url.hostname === "provider.example.test") {
-      assert.equal(url.pathname, "/v1/chat/completions");
+      assert.equal(url.pathname, "/v1");
       assert.equal(headers.get("Authorization"), "Bearer test-provider-key");
       if (options.providerFailure) return Response.json({}, { status: 500 });
       return Response.json({ choices: [{ message: { content: options.reply || '{"faqId":"CN061","confidence":0.98}' } }] });

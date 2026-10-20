@@ -1,11 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {chatEndpoint,requestFaqSelection,parseFaqSelection} from "../lib/ai/provider.js";
-const args={url:"https://api.miaoquai.com/v1/chat/completions",key:"fake-key",model:"deepseek-v4-pro",messages:[{role:"system",content:"Return JSON."},{role:"user",content:"西湖在哪里？"}]};
+const args={url:"https://api.miaoquai.com/v1",key:"fake-key",model:"deepseek-v4-pro",messages:[{role:"system",content:"Return JSON."},{role:"user",content:"西湖在哪里？"}]};
 const ok=(content='{"faqId":"CN061","confidence":0.99}',finish_reason="stop")=>Response.json({choices:[{finish_reason,message:{content}}]});
-test("Miaoqu endpoint appends chat/completions once and insists on HTTPS",()=>{
+test("Miaoqu posts to the configured /v1 URL without appending a path",()=>{
  assert.equal(chatEndpoint("https://api.miaoquai.com/v1"),args.url);
  assert.equal(chatEndpoint(args.url),args.url);
+ assert.equal(chatEndpoint('https://api.miaoquai.com/v1/'),args.url);
  assert.throws(()=>chatEndpoint("http://api.miaoquai.com/v1"),/HTTPS/);
 });
 test("DeepSeek JSON FAQ selection turns reasoning off",async()=>{

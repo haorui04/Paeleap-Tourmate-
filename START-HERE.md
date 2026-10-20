@@ -63,7 +63,7 @@ AI_API_KEY=your_actual_api_key
 AI_MODEL=your_actual_model_id
 ```
 
-The provider must support the OpenAI-compatible **Chat Completions** protocol. `AI_BASE_URL` can be the base API URL ending in `/v1` or the full `/chat/completions` endpoint. Use the exact model identifier your provider supports. AI selects a similar question; the server returns its stored answer unchanged. Unmatched questions are redirected, not answered from general model knowledge. See `FAQ-BANK.md` for editing the bank or storing it in Supabase.
+The provider must accept the chatbot's JSON request schema at the exact configured `AI_BASE_URL`. For Miaoqu, set `AI_BASE_URL=https://api.miaoquai.com/v1`; the chatbot POSTs to this address directly without adding `/chat/completions`. Use the exact model identifier your provider supports. AI selects a similar question; the server returns its stored answer unchanged. Unmatched questions are redirected, not answered from general model knowledge. See `FAQ-BANK.md` for editing the bank or storing it in Supabase.
 
 Press **Ctrl+C**, then run `npm run dev` again. The header will read **Local AI**. This configuration still bypasses sign-in for local development.
 
