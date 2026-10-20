@@ -20,3 +20,7 @@ This repository ships a **restricted bilingual FAQ assistant**, not a general-pu
 - The per-minute limiter caps individual user requests but does **not** enforce a global daily API budget. Add provider hard spend caps and monitoring.
 - Authenticated transcripts reside in Supabase; browser localStorage retains only trip metadata and drafts for authenticated users. Supabase Auth itself may use browser storage for session tokens.
 - There is no verified live DB / provider in the supplied artifact. A production **build** passing is necessary, but not sufficient to demonstrate a production-ready release.
+
+## Miaoqu provider diagnostics and bounded fallback
+
+If Miaoqu returns a successful HTTP response but the body has no OpenAI/Responses-style assistant text, the server logs only safe response-shape metadata (content type and boolean structure flags). It never logs raw upstream output, credentials, or prompts. The signed-in chat handler falls back to a **conservative exact/high-confidence FAQ match** using the existing curated bank, with `ai.mode=curated_faq_fallback`. If the bank cannot reliably match, it reports the AI service as temporarily unavailable rather than inventing an answer. This is a degraded service, **not proof that the Miaoqu AI integration works**. Check Vercel runtime logs after an unmatched tourism request to diagnose the gateway response shape.

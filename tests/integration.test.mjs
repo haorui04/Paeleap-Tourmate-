@@ -178,12 +178,31 @@ test("AI null, unknown ID and low confidence all return the tourism-only prompt"
   }
 });
 
-test("provider failures return 502 without writing a partial exchange", async (t) => {
+test("provider errors safely fall back to an exact curated FAQ, with transparent mode", async (t) => {
   configure(t, { AI_MOCK_MODE: "false" });
   const calls = services(t, { providerFailure: true });
-  t.mock.method(console, "error", () => {});
-  assert.equal((await POST(request())).status, 502);
-  assert.equal(calls.some((call) => call.url.pathname === "/rest/v1/messages" && call.method === "POST"), false);
+  t.mock.method(console, "warn", () => {});
+  const response = await POST(request());
+  assert.equal(response.status, 200);
+  const data = await response.json();
+  assert.equal(data.faq.id, "CN061");
+  assert.equal(data.ai.mode, "curated_faq_fallback");
+  assert.equal(data.reply, CHINA_TOURISM_FAQS.find((f) => f.id === "CN061").answer_en);
+  assert.ok(calls.some((call) => call.url.pathname === "/rest/v1/messages" && call.method === "POST"));
+});
+
+test("provider outages never invent an answer for unmatched tourism questions", async (t) => {
+  configure(t, { AI_MOCK_MODE: "false" });
+  const calls = services(t, { providerFailure: true });
+  t.mock.method(console, "warn", () => {});
+  const response = await POST(request({message:"Can I take my cat to a festival this weekend?",language:"en",conversationId:id}));
+  assert.equal(response.status, 200);
+  const data = await response.json();
+  assert.equal(data.safety.status, "redirected");
+  assert.equal(data.ai.mode, "curated_faq_fallback");
+  assert.match(data.reply, /temporarily unavailable/);
+  assert.deepEqual(data.sources, []);
+  assert.ok(calls.some((call) => call.url.hostname === "provider.example.test"));
 });
 
 test("production cannot bypass authentication even when local flags are true", async (t) => {
