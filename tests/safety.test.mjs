@@ -59,7 +59,7 @@ test("builds bounded, system-first conversation context", () => {
   assert.equal(messages.length, 14);
 });
 test("normalizes provider URLs without duplicated endpoints", () => {
-  assert.equal(chatEndpoint("https://api.example.com/v1"), "https://api.example.com/v1/chat/completions");
+  assert.equal(chatEndpoint("https://api.example.com/v1"), "https://api.example.com/v1");
   assert.equal(chatEndpoint("https://api.example.com/v1/chat/completions"), "https://api.example.com/v1/chat/completions");
   assert.throws(() => chatEndpoint("http://other.example.com/v1"));
 });

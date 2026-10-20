@@ -38,7 +38,7 @@ curl -s -X POST http://localhost:3000/api/chat \
   -d '{"message":"How do I book a train ticket in China?","language":"en"}'
 ```
 
-For semantic AI matching, configure `AI_BASE_URL`, `AI_API_KEY`, and `AI_MODEL`, set `AI_MOCK_MODE=false`, and test the provider's **OpenAI-compatible Chat Completions** API. The model returns an FAQ ID and confidence, not free-form answers. The server requires a known ID and confidence of at least 0.85, then looks up the stored answer. Providers with a different protocol require an adapter. Do not publish secrets or send them to the browser.
+For semantic AI matching, configure `AI_BASE_URL`, `AI_API_KEY`, and `AI_MODEL`, set `AI_MOCK_MODE=false`, and test the provider's **configured direct POST URL** (`https://api.miaoquai.com/v1` for Miaoqu). This code does not append `/chat/completions`. The model returns an FAQ ID and confidence, not free-form answers. The server requires a known ID and confidence of at least 0.85, then looks up the stored answer. Providers with a different protocol require an adapter. Do not publish secrets or send them to the browser.
 
 ## Database setup
 
