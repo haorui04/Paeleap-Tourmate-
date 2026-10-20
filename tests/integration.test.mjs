@@ -195,7 +195,7 @@ test("provider outages never invent an answer for unmatched tourism questions", 
   configure(t, { AI_MOCK_MODE: "false" });
   const calls = services(t, { providerFailure: true });
   t.mock.method(console, "warn", () => {});
-  const response = await POST(request({message:"Can I take my cat to a festival this weekend?",language:"en",conversationId:id}));
+  const response = await POST(request({message:"Is West Lake worth visiting in autumn?",language:"en",conversationId:id}));
   assert.equal(response.status, 200);
   const data = await response.json();
   assert.equal(data.safety.status, "redirected");
