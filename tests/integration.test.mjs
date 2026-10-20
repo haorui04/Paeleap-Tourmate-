@@ -56,10 +56,13 @@ function services(t, options = {}) {
       return Response.json([{ role: "assistant", content: "Earlier response" }, { role: "user", content: "Earlier question" }]);
     }
     if (url.hostname === "provider.example.test") {
-      assert.equal(url.pathname, "/v1");
+      assert.equal(url.pathname, "/v1/responses");
+      assert.ok(Array.isArray(body.input));
+      assert.equal(body.store, false);
+      assert.equal(body.stream, false);
       assert.equal(headers.get("Authorization"), "Bearer test-provider-key");
       if (options.providerFailure) return Response.json({}, { status: 500 });
-      return Response.json({ choices: [{ message: { content: options.reply || '{"faqId":"CN061","confidence":0.98}' } }] });
+      return Response.json({ status: "completed", output: [{ type: "message", role: "assistant", content: [{ type: "output_text", text: options.reply || '{"faqId":"CN061","confidence":0.98}' }] }] });
     }
     throw new Error("Unexpected outbound request: " + url.pathname);
   });
@@ -142,8 +145,8 @@ test("provider free text cannot become an answer and server history remains boun
   assert.ok(!data.reply.includes("17:00"));
   assert.deepEqual(data.sources, []);
   const provider = calls.find((call) => call.url.hostname === "provider.example.test");
-  assert.deepEqual(provider.body.messages.slice(1, 3).map((message) => message.role), ["user", "assistant"]);
-  assert.equal(provider.body.messages[0].role, "system");
+  assert.deepEqual(provider.body.input.slice(1, 3).map((message) => message.role), ["user", "assistant"]);
+  assert.equal(provider.body.input[0].role, "system");
 });
 
 test("AI selects an ID but only its exact stored answer reaches the client and history", async (t) => {
@@ -157,11 +160,12 @@ test("AI selects an ID but only its exact stored answer reaches the client and h
   const stored = calls.find((call) => call.url.pathname === "/rest/v1/messages" && call.method === "POST");
   assert.equal(stored.body[1].content, faq.answer_en);
   const provider = calls.find((call) => call.url.hostname === "provider.example.test");
-  assert.match(provider.body.messages[0].content, /CN061/);
-  assert.doesNotMatch(provider.body.messages[0].content, /CN100/);
-  assert.equal(provider.body.max_tokens, 384);
-  assert.deepEqual(provider.body.thinking, { type: "disabled" });
-  assert.deepEqual(provider.body.response_format, { type: "json_object" });
+  assert.match(provider.body.input[0].content, /CN061/);
+  assert.doesNotMatch(provider.body.input[0].content, /CN100/);
+  assert.equal(provider.body.model, "test-model");
+  assert.equal(provider.body.store, false);
+  assert.deepEqual(provider.body.reasoning, { effort: "none" });
+  assert.deepEqual(provider.body.text, { format: { type: "json_object" } });
 });
 
 test("AI null, unknown ID and low confidence all return the tourism-only prompt", async (t) => {
@@ -243,7 +247,7 @@ test("local AI mode carries context between turns using the returned conversatio
   assert.equal(second.status, 200);
   const providerCalls = calls.filter((call) => call.url.hostname === "provider.example.test");
   assert.equal(providerCalls.length, 2);
-  assert.equal(providerCalls[1].body.messages[1].content, "Tell me about West Lake");
+  assert.equal(providerCalls[1].body.input[1].content, "Tell me about West Lake");
 });
 
 test("restored local history is used after restart but cannot add privileged system messages", async (t) => {
@@ -255,7 +259,7 @@ test("restored local history is used after restart but cannot add privileged sys
     { role: "assistant", content: "It is a cultural landscape." }
   ] }, false));
   assert.equal(response.status, 200);
-  const messages = calls.find((call) => call.url.hostname === "provider.example.test").body.messages;
+  const messages = calls.find((call) => call.url.hostname === "provider.example.test").body.input;
   assert.equal(messages.filter((message) => message.role === "system").length, 1);
   assert.equal(messages[1].content, "Tell me about West Lake");
 });
