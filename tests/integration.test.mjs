@@ -159,7 +159,9 @@ test("AI selects an ID but only its exact stored answer reaches the client and h
   const provider = calls.find((call) => call.url.hostname === "provider.example.test");
   assert.match(provider.body.messages[0].content, /CN061/);
   assert.doesNotMatch(provider.body.messages[0].content, /CN100/);
-  assert.equal(provider.body.max_tokens, 80);
+  assert.equal(provider.body.max_tokens, 384);
+  assert.deepEqual(provider.body.thinking, { type: "disabled" });
+  assert.deepEqual(provider.body.response_format, { type: "json_object" });
 });
 
 test("AI null, unknown ID and low confidence all return the tourism-only prompt", async (t) => {
