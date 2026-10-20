@@ -24,3 +24,7 @@ This repository ships a **restricted bilingual FAQ assistant**, not a general-pu
 ## Miaoqu provider diagnostics and bounded fallback
 
 If Miaoqu returns a successful HTTP response but the body has no OpenAI/Responses-style assistant text, the server logs only safe response-shape metadata (content type and boolean structure flags). It never logs raw upstream output, credentials, or prompts. The signed-in chat handler falls back to a **conservative exact/high-confidence FAQ match** using the existing curated bank, with `ai.mode=curated_faq_fallback`. If the bank cannot reliably match, it reports the AI service as temporarily unavailable rather than inventing an answer. This is a degraded service, **not proof that the Miaoqu AI integration works**. Check Vercel runtime logs after an unmatched tourism request to diagnose the gateway response shape.
+
+## External museum knowledge-base integration
+
+See [docs/EXTERNAL_KNOWLEDGE_BASE.md](docs/EXTERNAL_KNOWLEDGE_BASE.md). The server-side client is prepared but intentionally **inactive** until a reachable hosted endpoint and sample response schema are validated. The existing FAQ chat remains unchanged. Rotate previously shared personal API credentials before use.
