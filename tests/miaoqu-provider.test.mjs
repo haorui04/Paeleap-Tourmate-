@@ -182,3 +182,45 @@ test("Sub2API output cannot bypass known FAQ verification", async () => {
   const content=await requestResponsesFaqSelection({...responsesArgs,fetchImpl:async()=>responsesOk('I invented an opening time')});
   assert.equal(parseFaqSelection(content,[{id:"CN061"}]),null);
 });
+
+test("Miaoqu Responses HTTP failures log status and only redacted diagnostic flags", async (t) => {
+  const warnings = [];
+  t.mock.method(console, "warn", (...args) => warnings.push(args));
+  const privateMessage = "private-visitor-question-never-log";
+  const secret = "test-fake-secret-never-log";
+  let calls = 0;
+  const failure = await requestResponsesFaqSelection({
+    ...responsesArgs, key: secret,
+    fetchImpl: async () => {
+      calls++;
+      return Response.json({
+        error: {
+          code: "invalid_request_error",
+          message: "Invalid model " + privateMessage + " and " + secret
+        }
+      }, { status: 400 });
+    }
+  }).then(() => null, (e) => e);
+  assert.match(failure.message, /HTTP 400/);
+  assert.equal(calls, 1);
+  assert.equal(warnings.length, 1);
+  assert.equal(warnings[0][0], "Miaoqu Responses upstream rejection");
+  assert.equal(warnings[0][1].httpStatus, 400);
+  assert.equal(warnings[0][1].errorCode, "invalid_request_error");
+  assert.equal(warnings[0][1].mentionsModel, true);
+  assert.doesNotMatch(JSON.stringify(warnings), new RegExp(privateMessage + "|" + secret));
+});
+
+test("Miaoqu Responses status diagnostics also classify 401 without exposing provider body", async (t) => {
+  const warnings = [];
+  t.mock.method(console, "warn", (...args) => warnings.push(args));
+  await assert.rejects(requestResponsesFaqSelection({
+    ...responsesArgs,
+    fetchImpl: async () => new Response("<html>hidden personal data</html>", {
+      status: 401, headers: { "Content-Type": "text/html" }
+    })
+  }), /HTTP 401/);
+  assert.equal(warnings[0][1].httpStatus, 401);
+  assert.equal(warnings[0][1].looksLikeHtml, true);
+  assert.doesNotMatch(JSON.stringify(warnings), /hidden personal data/);
+});
