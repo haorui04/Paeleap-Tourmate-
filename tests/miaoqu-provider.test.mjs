@@ -57,3 +57,30 @@ test("plain fallback does not retry unsupported parameter errors again",async()=
  let calls=0;await assert.rejects(requestFaqSelection({...args,fetchImpl:async()=>{calls++;return Response.json({error:{message:"unsupported thinking and response_format"}},{status:400});}}),/400/);
  assert.equal(calls,2);
 });
+
+
+test("provider accepts nested OpenAI-compatible choice payload", async () => {
+  const answer = await requestFaqSelection({...args,fetchImpl:async()=>Response.json({data:{choices:[{message:{content:'{"faqId":"CN061","confidence":0.99}'}}]}})});
+  assert.equal(parseFaqSelection(answer,[{id:"CN061"}]).faqId,"CN061");
+});
+test("provider accepts Responses API assistant output, but ignores reasoning text", async () => {
+  const answer = await requestFaqSelection({...args,fetchImpl:async()=>Response.json({status:"completed",output:[
+    {type:"reasoning",content:[{type:"reasoning_text",text:"private reasoning"}]},
+    {type:"message",role:"assistant",content:[{type:"output_text",text:'{"faqId":"CN061","confidence":0.99}'}]}
+  ]})});
+  assert.equal(parseFaqSelection(answer,[{id:"CN061"}]).faqId,"CN061");
+});
+test("provider rejects HTML 200 and never logs its body", async (t) => {
+  const logs=[];t.mock.method(console,"warn",(...args)=>logs.push(args));
+  await assert.rejects(requestFaqSelection({...args,fetchImpl:async()=>new Response("<html>private payload</html>",{status:200,headers:{"content-type":"text/html"}})}),/invalid AI/);
+  assert.equal(logs.length,1);
+  assert.doesNotMatch(JSON.stringify(logs),/private payload/);
+  assert.match(JSON.stringify(logs),/non_json/);
+});
+test("provider rejects success JSON without assistant text, logging only shape flags", async (t) => {
+  const logs=[];t.mock.method(console,"warn",(...args)=>logs.push(args));
+  await assert.rejects(requestFaqSelection({...args,fetchImpl:async()=>Response.json({error:{message:"private error"}})}),/invalid AI/);
+  assert.equal(logs.length,1);
+  assert.doesNotMatch(JSON.stringify(logs),/private error/);
+  assert.equal(logs[0][1].hasErrorObject,true);
+});
