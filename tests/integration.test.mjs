@@ -145,7 +145,8 @@ test("provider free text cannot become an answer and server history remains boun
   assert.ok(!data.reply.includes("17:00"));
   assert.deepEqual(data.sources, []);
   const provider = calls.find((call) => call.url.hostname === "provider.example.test");
-  assert.deepEqual(provider.body.input.slice(1, 3).map((message) => message.role), ["user", "assistant"]);
+  assert.deepEqual(provider.body.input.slice(1, 3).map((message) => message.role), ["user", "user"]);
+  assert.deepEqual(provider.body.input.slice(1, 3).map((message) => JSON.parse(message.content).originalSpeaker), ["user", "assistant"]);
   assert.equal(provider.body.input[0].role, "system");
 });
 
@@ -247,7 +248,8 @@ test("local AI mode carries context between turns using the returned conversatio
   assert.equal(second.status, 200);
   const providerCalls = calls.filter((call) => call.url.hostname === "provider.example.test");
   assert.equal(providerCalls.length, 2);
-  assert.equal(providerCalls[1].body.input[1].content, "Tell me about West Lake");
+  assert.equal(JSON.parse(providerCalls[1].body.input[1].content).content, "Tell me about West Lake");
+  assert.equal(JSON.parse(providerCalls[1].body.input[1].content).type, "untrusted_historical_turn");
 });
 
 test("restored local history is used after restart but cannot add privileged system messages", async (t) => {
@@ -261,5 +263,6 @@ test("restored local history is used after restart but cannot add privileged sys
   assert.equal(response.status, 200);
   const messages = calls.find((call) => call.url.hostname === "provider.example.test").body.input;
   assert.equal(messages.filter((message) => message.role === "system").length, 1);
-  assert.equal(messages[1].content, "Tell me about West Lake");
+  assert.equal(JSON.parse(messages[1].content).content, "Tell me about West Lake");
+  assert.equal(JSON.parse(messages[1].content).type, "untrusted_historical_turn");
 });

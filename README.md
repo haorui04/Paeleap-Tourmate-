@@ -1,4 +1,6 @@
 > **Production deployment:** Follow [DEPLOYMENT.md](DEPLOYMENT.md). Real provider and Supabase integration must be validated before enabling public traffic.
+>
+> **Safety testing:** [SECURITY-TESTING.md](SECURITY-TESTING.md) documents adversarial prompts, red/blue-team defenses, reproducible evidence and mandatory live-provider/database launch gates. Passing offline fixtures is not production safety certification.
 
 # Paeleap TourMate — integrated tourism chatbot
 
