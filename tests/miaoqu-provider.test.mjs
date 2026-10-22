@@ -224,3 +224,53 @@ test("Miaoqu Responses status diagnostics also classify 401 without exposing pro
   assert.equal(warnings[0][1].looksLikeHtml, true);
   assert.doesNotMatch(JSON.stringify(warnings), /hidden personal data/);
 });
+
+test("transient Miaoqu 503 receives exactly one bounded retry and then returns generation", async (t) => {
+  const warnings = [];
+  t.mock.method(console, "warn", (...args) => warnings.push(args));
+  let count = 0;
+  const result = await requestResponsesFaqSelection({
+    ...responsesArgs, minimalFirst: true,
+    fetchImpl: async () => {
+      count++;
+      return count === 1
+        ? Response.json({error: {code:"unavailable",message:"Service unavailable"}}, {status:503})
+        : responsesOk();
+    }
+  });
+  assert.equal(count, 2);
+  assert.equal(parseFaqSelection(result,[{id:"CN061"}]).faqId, "CN061");
+  assert.equal(warnings.length, 1);
+  assert.equal(warnings[0][1].httpStatus, 503);
+});
+
+test("persistent 503 gives up after second request and keeps diagnostics private", async (t) => {
+  const warnings = [];
+  t.mock.method(console, "warn", (...args) => warnings.push(args));
+  let count = 0;
+  await assert.rejects(requestResponsesFaqSelection({
+    ...responsesArgs, minimalFirst: true,
+    fetchImpl: async () => {
+      count++;
+      return Response.json({error:{message:"private-user-content-from-provider"}}, {status:503});
+    }
+  }), /HTTP 503/);
+  assert.equal(count,2);
+  assert.equal(warnings.length,2);
+  assert.doesNotMatch(JSON.stringify(warnings), /private-user-content/);
+});
+
+test("503 retry never changes model or minimal Responses payload", async () => {
+  const payloads = [];
+  await requestResponsesFaqSelection({
+    ...responsesArgs, minimalFirst:true,
+    fetchImpl: async (_url,init) => {
+      payloads.push(JSON.parse(init.body));
+      return payloads.length === 1
+        ? Response.json({error:{message:"upstream busy"}},{status:503})
+        : responsesOk();
+    }
+  });
+  assert.deepEqual(payloads,[payloads[0],payloads[0]]);
+  assert.deepEqual(Object.keys(payloads[0]).sort(),["input","model","stream"]);
+});
