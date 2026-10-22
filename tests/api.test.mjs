@@ -47,3 +47,30 @@ test("prompt injection is blocked before contacting model", async () => {
   assert.equal(data.safety.status, "blocked");
   assert.equal(data.sources.length, 0);
 });
+
+test("status exposes active AI response mode without disclosing provider credentials", async (t) => {
+  const saved = { NODE_ENV: process.env.NODE_ENV, ALLOW_LOCAL_DEMO: process.env.ALLOW_LOCAL_DEMO,
+    AI_RESPONSE_MODE: process.env.AI_RESPONSE_MODE, AI_API_KEY: process.env.AI_API_KEY };
+  t.after(() => {
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    }
+  });
+  process.env.NODE_ENV = "production";
+  process.env.ALLOW_LOCAL_DEMO = "false";
+  process.env.AI_RESPONSE_MODE = "grounded";
+  process.env.AI_API_KEY = "FAKE_STATUS_TEST_KEY";
+  const enabled = await (await GET()).json();
+  assert.equal(enabled.aiResponseMode, "grounded");
+  assert.ok(!JSON.stringify(enabled).includes("FAKE_STATUS_TEST_KEY"));
+
+  process.env.AI_RESPONSE_MODE = "faq";
+  const disabled = await (await GET()).json();
+  assert.equal(disabled.aiResponseMode, "faq");
+
+  process.env.NODE_ENV = "development";
+  process.env.ALLOW_LOCAL_DEMO = "true";
+  process.env.AI_RESPONSE_MODE = "grounded";
+  const demo = await (await GET()).json();
+  assert.equal(demo.aiResponseMode, "faq");
+});
