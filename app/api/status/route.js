@@ -14,11 +14,12 @@ export async function GET() {
   return Response.json({
     service: "paeleap-tourism-ai",
     status: process.env.NODE_ENV === "production" && !ready ? "unconfigured" : "ok",
-    aiConfigured: [process.env.AI_BASE_URL, process.env.AI_API_KEY, process.env.AI_MODEL].every(hasConfiguredValue),
+    aiConfigured: [process.env.AI_BASE_URL, resolveAiApiKey(), process.env.AI_MODEL].every(hasConfiguredValue),
     supabaseConfigured: [process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY, process.env.SUPABASE_SERVICE_ROLE_KEY].every(hasConfiguredValue),
     localDemoMode: localDemo,
     aiMockMode: mockAiEnabled(),
     aiResponseMode,
+    aiApiStyle: ["responses", "chat_completions", "anthropic"].includes(process.env.AI_API_STYLE) ? process.env.AI_API_STYLE : process.env.AI_API_STYLE ? "invalid" : "responses",
     // Configuration only, not a database/provider health check.
     faqBank: { source: process.env.FAQ_BANK_SOURCE || (process.env.NODE_ENV === "production" ? "supabase" : "local"), expectedCount: 100,
       matchingMode: mockAiEnabled() ? "offline" : "ai" }
