@@ -1,4 +1,4 @@
-import { hasConfiguredValue, localDemoEnabled, mockAiEnabled } from "../../../lib/config.js";
+import { hasConfiguredValue, localDemoEnabled, mockAiEnabled, resolveAiApiKey } from "../../../lib/config.js";
 
 export const runtime = "nodejs";
 
@@ -7,7 +7,7 @@ export async function GET() {
   // Expose active mode without revealing provider credentials.
   // This confirms configuration, NOT that a live provider inference succeeds.
   const aiResponseMode = process.env.AI_RESPONSE_MODE === "grounded" && !localDemo ? "grounded" : "faq";
-  const ready = [process.env.AI_BASE_URL, process.env.AI_API_KEY, process.env.AI_MODEL,
+  const ready = [process.env.AI_BASE_URL, resolveAiApiKey(), process.env.AI_MODEL,
     process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY, process.env.SUPABASE_SERVICE_ROLE_KEY,
     process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY].every(hasConfiguredValue) &&
     (process.env.FAQ_BANK_SOURCE || "supabase") === "supabase";

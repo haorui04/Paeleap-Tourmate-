@@ -5,6 +5,7 @@ import { tourismOnlyReply, matchFaqOffline } from "../../../lib/tourism/faq-matc
 import { authenticate, ensureConversation, getRecentMessages, storeExchange, consumeQuota } from "../../../lib/db/supabase.js";
 import { localDemoEnabled } from "../../../lib/config.js";
 import { generateGroundedReply } from "../../../lib/ai/generate.js";
+import { aiFailureCode } from "../../../lib/ai/diagnostics.js";
 
 export const runtime = "nodejs";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -113,6 +114,7 @@ export async function POST(request) {
 
     let faq = null;
     let providerDegraded = false;
+    let providerErrorCode = null;
     let generationUsed = false;
     let generationSources = [];
     let verified = { reply: classified.reply, status: classified.status };
@@ -128,6 +130,7 @@ export async function POST(request) {
         } catch (error) {
           // Never turn raw upstream errors into user-visible text.
           providerDegraded = true;
+          providerErrorCode = aiFailureCode(error);
           console.warn("AI generation degraded; using curated FAQ fallback", {
             kind: /AI provider returned HTTP/.test(error?.message || "") ? "upstream_http" : "upstream_format_or_network"
           });
@@ -142,6 +145,7 @@ export async function POST(request) {
             : await selectFaq({ message: body.message.trim(), language, history, faqs });
         } catch (error) {
           providerDegraded = true;
+          providerErrorCode = aiFailureCode(error);
           console.warn("AI matching degraded; using curated FAQ fallback", {
             kind: /AI provider returned HTTP/.test(error?.message || "") ? "upstream_http" : "upstream_format_or_network"
           });
@@ -171,7 +175,7 @@ export async function POST(request) {
       });
     }
     return json({ reply: verified.reply, conversationId, sources, safety: { status },
-      ...(generationUsed ? { ai: { mode: "grounded_generation" } } : providerDegraded ? { ai: { mode: "curated_faq_fallback" } } : {}),
+      ...(generationUsed ? { ai: { mode: "grounded_generation" } } : providerDegraded ? { ai: { mode: "curated_faq_fallback", errorCode: providerErrorCode || "UPSTREAM_UNKNOWN" } } : {}),
       ...(status === "allowed" && faq ? { faq: { id: faq.id, question: faq[language === "zh" ? "question_zh" : "question_en"], category: faq.category } } : {}) });
   } catch (error) {
     if (error instanceof PayloadError) return json({ error: error.message }, error.status);

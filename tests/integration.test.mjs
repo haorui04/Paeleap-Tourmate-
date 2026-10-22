@@ -5,13 +5,13 @@ import { GET } from "../app/api/status/route.js";
 import { CHINA_TOURISM_FAQS } from "../data/china-tourism-faq.js";
 
 const id = "550e8400-e29b-41d4-a716-446655440000";
-const keys = ["NODE_ENV", "ALLOW_LOCAL_DEMO", "AI_MOCK_MODE", "AI_RESPONSE_MODE", "AI_BASE_URL", "AI_API_KEY", "AI_MODEL",
+const keys = ["NODE_ENV", "ALLOW_LOCAL_DEMO", "AI_MOCK_MODE", "AI_RESPONSE_MODE", "SUB2API_API_KEY", "AI_BASE_URL", "AI_API_KEY", "AI_MODEL",
   "SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY", "SUPABASE_SERVICE_ROLE_KEY", "FAQ_BANK_SOURCE"];
 
 function configure(t, overrides = {}) {
   const saved = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
   Object.assign(process.env, {
-    NODE_ENV: "development", ALLOW_LOCAL_DEMO: "false", AI_MOCK_MODE: "true", FAQ_BANK_SOURCE: "local",
+    NODE_ENV: "development", ALLOW_LOCAL_DEMO: "false", AI_MOCK_MODE: "true", SUB2API_API_KEY: "replace_me", FAQ_BANK_SOURCE: "local",
     AI_BASE_URL: "https://provider.example.test/v1", AI_API_KEY: "test-provider-key", AI_MODEL: "test-model",
     SUPABASE_URL: "https://database.example.test", SUPABASE_PUBLISHABLE_KEY: "test-public-key",
     SUPABASE_SERVICE_ROLE_KEY: "test-server-only-key", ...overrides
@@ -289,4 +289,16 @@ test("grounded mode provider outage falls back without a second failed AI call",
   assert.equal(result.ai.mode, "curated_faq_fallback");
   assert.equal(result.reply, CHINA_TOURISM_FAQS.find(f => f.id === "CN061").answer_en);
   assert.equal(calls.filter(c => c.url.hostname === "provider.example.test").length, 1);
+});
+
+test("grounded provider auth failure gives safe diagnostic error code and no keys",async(t)=>{
+  configure(t,{AI_MOCK_MODE:"false",AI_RESPONSE_MODE:"grounded"});
+  const calls=services(t,{ providerFailure:true });
+  // Mock status 500 is classified even when the fallback handles the error.
+  t.mock.method(console,"warn",()=>{});
+  const data=await(await POST(request({message:"Is West Lake worth visiting in autumn?",language:"en",conversationId:id}))).json();
+  assert.equal(data.ai.mode,"curated_faq_fallback");
+  assert.equal(data.ai.errorCode,"UPSTREAM_HTTP_500");
+  assert.doesNotMatch(JSON.stringify(data),/test-provider-key|test-server-only-key/);
+  assert.equal(calls.filter(c=>c.url.hostname==="provider.example.test").length,1);
 });
