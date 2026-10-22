@@ -58,7 +58,7 @@ function services(t, options = {}) {
     if (url.hostname === "provider.example.test") {
       assert.equal(url.pathname, "/v1/responses");
       assert.ok(Array.isArray(body.input));
-      assert.equal(body.store, false);
+      assert.deepEqual(Object.keys(body).sort(), ["input", "model", "stream"]);
       assert.equal(body.stream, false);
       assert.equal(headers.get("Authorization"), "Bearer test-provider-key");
       if (options.providerFailure) return Response.json({}, { status: 500 });
@@ -164,9 +164,8 @@ test("AI selects an ID but only its exact stored answer reaches the client and h
   assert.match(provider.body.input[0].content, /CN061/);
   assert.doesNotMatch(provider.body.input[0].content, /CN100/);
   assert.equal(provider.body.model, "test-model");
-  assert.equal(provider.body.store, false);
-  assert.deepEqual(provider.body.reasoning, { effort: "none" });
-  assert.deepEqual(provider.body.text, { format: { type: "json_object" } });
+  assert.deepEqual(Object.keys(provider.body).sort(), ["input", "model", "stream"]);
+  assert.equal(provider.body.stream, false);
 });
 
 test("AI null, unknown ID and low confidence all return the tourism-only prompt", async (t) => {
