@@ -4,6 +4,7 @@ import { getFaqBank } from "../../../lib/db/faq.js";
 import { tourismOnlyReply, matchFaqOffline } from "../../../lib/tourism/faq-matching.js";
 import { authenticate, ensureConversation, getRecentMessages, storeExchange, consumeQuota } from "../../../lib/db/supabase.js";
 import { localDemoEnabled } from "../../../lib/config.js";
+import { generateGroundedReply } from "../../../lib/ai/generate.js";
 
 export const runtime = "nodejs";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -112,29 +113,49 @@ export async function POST(request) {
 
     let faq = null;
     let providerDegraded = false;
+    let generationUsed = false;
+    let generationSources = [];
     let verified = { reply: classified.reply, status: classified.status };
     if (classified.status === "allowed") {
       const faqs = await getFaqBank();
-      let selection;
-      try {
-        selection = await selectFaq({ message: body.message.trim(), language, history, faqs });
-      } catch (error) {
-        // Only a conservatively matched, curated FAQ may be returned during
-        // provider outages; never invent a response from unverified text.
-        providerDegraded = true;
-        console.warn("AI matching degraded; using curated FAQ fallback", {
-          kind: /AI provider returned HTTP/.test(error?.message || "") ? "upstream_http" : "upstream_format_or_network"
-        });
-        selection = matchFaqOffline(body.message.trim(), faqs, sanitizeFaqHistory(history));
+      const groundedMode = process.env.AI_RESPONSE_MODE === "grounded" && !localDemoEnabled();
+      if (groundedMode) {
+        try {
+          const generated = await generateGroundedReply({ message: body.message.trim(), language, history, faqs });
+          verified = { reply: generated.reply, status: generated.status };
+          generationSources = generated.sources;
+          generationUsed = true;
+        } catch (error) {
+          // Never turn raw upstream errors into user-visible text.
+          providerDegraded = true;
+          console.warn("AI generation degraded; using curated FAQ fallback", {
+            kind: /AI provider returned HTTP/.test(error?.message || "") ? "upstream_http" : "upstream_format_or_network"
+          });
+        }
       }
-      faq = selection ? faqs.find((item) => item.id === selection.faqId) : null;
-      verified = faq ? validateOutput(faq[language === "zh" ? "answer_zh" : "answer_en"], language)
-        : { reply: providerDegraded
-          ? (language === "zh" ? "AI匹配服务暂时不可用。请使用知识库中问题的准确表述，或稍后重试。" : "AI matching is temporarily unavailable. Try the exact wording of a FAQ question or try again later.")
-          : tourismOnlyReply(language), status: "redirected" };
+      if (!generationUsed) {
+        let selection;
+        try {
+          // Grounded generation failure uses the deterministic matcher directly;
+          // do not repeatedly call a failed provider during the same request.
+          selection = providerDegraded ? matchFaqOffline(body.message.trim(), faqs, sanitizeFaqHistory(history))
+            : await selectFaq({ message: body.message.trim(), language, history, faqs });
+        } catch (error) {
+          providerDegraded = true;
+          console.warn("AI matching degraded; using curated FAQ fallback", {
+            kind: /AI provider returned HTTP/.test(error?.message || "") ? "upstream_http" : "upstream_format_or_network"
+          });
+          selection = matchFaqOffline(body.message.trim(), faqs, sanitizeFaqHistory(history));
+        }
+        faq = selection ? faqs.find((item) => item.id === selection.faqId) : null;
+        verified = faq ? validateOutput(faq[language === "zh" ? "answer_zh" : "answer_en"], language)
+          : { reply: providerDegraded
+            ? (language === "zh" ? "AI生成服务暂时不可用，请稍后重试。" : "AI generation is temporarily unavailable. Please try again later.")
+            : tourismOnlyReply(language), status: "redirected" };
+      }
     }
     const status = verified.status;
-    const sources = status === "allowed" && faq ? faq.sources : [];
+    const sources = status === "allowed" ? (generationUsed ? generationSources : (faq?.sources || [])) : [];
     if (!demo) {
       await storeExchange(user, conversationId, body.message.trim(), verified.reply);
     } else {
@@ -150,7 +171,7 @@ export async function POST(request) {
       });
     }
     return json({ reply: verified.reply, conversationId, sources, safety: { status },
-      ...(providerDegraded ? { ai: { mode: "curated_faq_fallback" } } : {}),
+      ...(generationUsed ? { ai: { mode: "grounded_generation" } } : providerDegraded ? { ai: { mode: "curated_faq_fallback" } } : {}),
       ...(status === "allowed" && faq ? { faq: { id: faq.id, question: faq[language === "zh" ? "question_zh" : "question_en"], category: faq.category } } : {}) });
   } catch (error) {
     if (error instanceof PayloadError) return json({ error: error.message }, error.status);

@@ -5,7 +5,7 @@ import { GET } from "../app/api/status/route.js";
 import { CHINA_TOURISM_FAQS } from "../data/china-tourism-faq.js";
 
 const id = "550e8400-e29b-41d4-a716-446655440000";
-const keys = ["NODE_ENV", "ALLOW_LOCAL_DEMO", "AI_MOCK_MODE", "AI_BASE_URL", "AI_API_KEY", "AI_MODEL",
+const keys = ["NODE_ENV", "ALLOW_LOCAL_DEMO", "AI_MOCK_MODE", "AI_RESPONSE_MODE", "AI_BASE_URL", "AI_API_KEY", "AI_MODEL",
   "SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY", "SUPABASE_SERVICE_ROLE_KEY", "FAQ_BANK_SOURCE"];
 
 function configure(t, overrides = {}) {
@@ -58,7 +58,7 @@ function services(t, options = {}) {
     if (url.hostname === "provider.example.test") {
       assert.equal(url.pathname, "/v1/responses");
       assert.ok(Array.isArray(body.input));
-      assert.equal(body.store, false);
+      assert.deepEqual(Object.keys(body).sort(), ["input", "model", "stream"]);
       assert.equal(body.stream, false);
       assert.equal(headers.get("Authorization"), "Bearer test-provider-key");
       if (options.providerFailure) return Response.json({}, { status: 500 });
@@ -164,9 +164,8 @@ test("AI selects an ID but only its exact stored answer reaches the client and h
   assert.match(provider.body.input[0].content, /CN061/);
   assert.doesNotMatch(provider.body.input[0].content, /CN100/);
   assert.equal(provider.body.model, "test-model");
-  assert.equal(provider.body.store, false);
-  assert.deepEqual(provider.body.reasoning, { effort: "none" });
-  assert.deepEqual(provider.body.text, { format: { type: "json_object" } });
+  assert.deepEqual(Object.keys(provider.body).sort(), ["input", "model", "stream"]);
+  assert.equal(provider.body.stream, false);
 });
 
 test("AI null, unknown ID and low confidence all return the tourism-only prompt", async (t) => {
@@ -265,4 +264,29 @@ test("restored local history is used after restart but cannot add privileged sys
   assert.equal(messages.filter((message) => message.role === "system").length, 1);
   assert.equal(JSON.parse(messages[1].content).content, "Tell me about West Lake");
   assert.equal(JSON.parse(messages[1].content).type, "untrusted_historical_turn");
+});
+
+test("opt-in grounded mode returns a natural AI reply, not the fixed FAQ answer", async (t) => {
+  configure(t, { AI_MOCK_MODE: "false", AI_RESPONSE_MODE: "grounded" });
+  const calls = services(t, { reply: "West Lake is a cultural landscape shaped by Chinese poetry and gardens." });
+  const response = await POST(request());
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.safety.status, "allowed");
+  assert.match(data.reply, /poetry and gardens/);
+  assert.equal(data.ai.mode, "grounded_generation");
+  assert.equal(data.faq, undefined);
+  const providerCalls = calls.filter(call => call.url.hostname === "provider.example.test");
+  assert.equal(providerCalls.length, 1);
+  assert.deepEqual(Object.keys(providerCalls[0].body).sort(), ["input", "model", "stream"]);
+});
+
+test("grounded mode provider outage falls back without a second failed AI call", async (t) => {
+  configure(t, { AI_MOCK_MODE: "false", AI_RESPONSE_MODE: "grounded" });
+  const calls = services(t, { providerFailure: true });
+  t.mock.method(console, "warn", () => {});
+  const result = await (await POST(request())).json();
+  assert.equal(result.ai.mode, "curated_faq_fallback");
+  assert.equal(result.reply, CHINA_TOURISM_FAQS.find(f => f.id === "CN061").answer_en);
+  assert.equal(calls.filter(c => c.url.hostname === "provider.example.test").length, 1);
 });
