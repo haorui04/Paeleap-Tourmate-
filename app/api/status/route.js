@@ -4,6 +4,9 @@ export const runtime = "nodejs";
 
 export async function GET() {
   const localDemo = localDemoEnabled();
+  // Expose active mode without revealing provider credentials.
+  // This confirms configuration, NOT that a live provider inference succeeds.
+  const aiResponseMode = process.env.AI_RESPONSE_MODE === "grounded" && !localDemo ? "grounded" : "faq";
   const ready = [process.env.AI_BASE_URL, process.env.AI_API_KEY, process.env.AI_MODEL,
     process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY, process.env.SUPABASE_SERVICE_ROLE_KEY,
     process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY].every(hasConfiguredValue) &&
@@ -15,6 +18,7 @@ export async function GET() {
     supabaseConfigured: [process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY, process.env.SUPABASE_SERVICE_ROLE_KEY].every(hasConfiguredValue),
     localDemoMode: localDemo,
     aiMockMode: mockAiEnabled(),
+    aiResponseMode,
     // Configuration only, not a database/provider health check.
     faqBank: { source: process.env.FAQ_BANK_SOURCE || (process.env.NODE_ENV === "production" ? "supabase" : "local"), expectedCount: 100,
       matchingMode: mockAiEnabled() ? "offline" : "ai" }
