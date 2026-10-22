@@ -54,3 +54,20 @@ control. A personal key previously shared in a screenshot should be revoked.
 Generated responses are checked by existing deterministic output checks; this
 does not prove comprehensive model safety, and independent red-team testing
 is still required.
+
+## 503 service-unavailable incident (22 October 2026)
+An actual production Vercel log showed `HTTP 503`, `errorCode: unclassified`
+for the Miaoqu Responses endpoint. This is a provider/gateway rejection,
+**not evidence of a wrong JSON schema**. DeepSeek's official documentation
+describes HTTP 503 as server overload; Sub2API gateways can also return 503
+when the key's group has no available model channel.
+
+The Responses client performs **one** extra attempt after 750 ms on 503 only.
+If a second 503 occurs, TourMate still falls back safely. A retry cannot fix a
+nonexistent model route or an unavailable provider group.
+
+Check the provider dashboard for the API key's **group**, model entitlement,
+remaining credits and available channels. If it persists, supply the provider
+with the request timestamp, `deepseek-v4-pro`, `POST /v1/responses`, HTTP 503,
+and the *provider's request ID*, if shown in private diagnostics. Never share
+the bearer token or private prompt.
