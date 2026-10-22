@@ -14,7 +14,8 @@
     "test:security": "node --test tests/guardrails.test.mjs tests/security-boundaries.test.mjs tests/redteam.test.mjs",
     "test:redteam": "node scripts/redteam.mjs",
     "faq:check": "node scripts/faq-bank.mjs",
-    "faq:export": "node scripts/faq-bank.mjs --export"
+    "faq:export": "node scripts/faq-bank.mjs --export",
+    "ai:check": "node scripts/check-sub2api.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.117.3",
