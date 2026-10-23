@@ -75,7 +75,7 @@ as $$
 declare
   v_used integer;
 begin
-  if p_user_id is null or p_max_requests not between 1 and 100 then
+  if p_user_id is null or p_max_requests is null or p_max_requests not between 1 and 100 then
     return false;
   end if;
   begin

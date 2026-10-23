@@ -4,7 +4,7 @@
 
 # Paeleap TourMate — integrated tourism chatbot
 
-**Status:** frontend and backend are integrated on `feature/frontend-chat`. The chat endpoint now selects from exactly 100 bilingual China-tourism FAQs. Start with [START-HERE.md](START-HERE.md) for VS Code launch steps and [FAQ-BANK.md](FAQ-BANK.md) for database and matching details. No branch switch is required.
+**Current architecture:** reusable, administrator-configured museum companions alongside the original 100 bilingual China-tourism FAQs. See [museum setup and integration](docs/MUSEUM-DEPLOYMENT.md), [persona file format](examples/personas/README.md), and [remediation results](docs/SECURITY-REMEDIATION-2026-10-23.md). A passing build is not public-launch certification.
 
 A bilingual Next.js application with a responsive chat interface, a local SQLite FAQ database for development (required Supabase FAQ storage in production), AI question selection, deterministic safety checks, persistent trip history, Supabase authentication, and a per-minute quota.
 
@@ -17,13 +17,16 @@ npm ci
 npm run dev
 ```
 
-`package-lock.json` records the installed dependency versions. The local `.env.local` is set up for offline FAQ matching without external credentials. On a fresh checkout, copy `.env.example` to `.env.local`, or create it with the local flags below. Keep real credentials in `.env.local`, which Git ignores.
+`package-lock.json` records dependency versions. No real credentials are supplied. On a fresh checkout, copy `.env.example` to `.env.local`, then configure it. Keep real credentials in `.env.local`, which Git ignores.
 
 For a **local mock-only** smoke test, keep these variables in `.env.local`:
 
 ```env
 ALLOW_LOCAL_DEMO=true
 AI_MOCK_MODE=true
+FAQ_BANK_SOURCE=local
+# Optional Little De Rabbit demonstration, not real museum content:
+PERSONA_LOAD_EXAMPLES=true
 ```
 
 These modes are **automatically disabled in production**. Offline mode uses a conservative similarity matcher, not a live AI API. Both modes return only the selected database answer; an unrelated or unrecognized question receives the China-tourism-only prompt. Safety and emergency rules take priority. Each trip has its own sidebar entry, messages, draft and conversation ID. Browser storage keeps transcripts separated by account and restores them after reload. If only session storage works, the UI explains the limitation.
@@ -40,20 +43,20 @@ curl -s -X POST http://localhost:3000/api/chat \
   -d '{"message":"How do I book a train ticket in China?","language":"en"}'
 ```
 
-For semantic AI matching, configure `AI_BASE_URL`, `AI_API_KEY`, and `AI_MODEL`, set `AI_MOCK_MODE=false`, and test the provider's **configured direct POST URL** (`https://api.miaoquai.com/v1` for Miaoqu). This code does not append `/chat/completions`. The model returns an FAQ ID and confidence, not free-form answers. The server requires a known ID and confidence of at least 0.85, then looks up the stored answer. Providers with a different protocol require an adapter. Do not publish secrets or send them to the browser.
+For semantic AI matching, configure the server-only provider key, exact `AI_MODEL`, `AI_BASE_URL` ending in `/v1`, and explicit `AI_API_STYLE=responses|chat_completions|anthropic`. The adapter appends the protocol's inference path. Set `AI_MOCK_MODE=false`. `AI_RESPONSE_MODE=faq` preserves single-FAQ selection for TourMate; `grounded` and custom museum profiles use bounded AI evidence composition: the model selects up to three known records and the server renders their approved text. Arbitrary model-authored prose is rejected. Citations come only from the selected records, not every retrieval candidate. Provider output is capped; a gateway rejecting those caps fails to curated fallback rather than silently removing the protection.
 
 ## Database setup
 
 There was no clearly identified Supabase project for this application on 2026-10-15. **No live schema has been applied.**
 
 1. Create a dedicated Supabase project for this chatbot.
-2. Run `supabase/schema.sql` in its SQL editor (or prepare and apply a migration with your team's CLI process).
+2. Apply `supabase/schema.sql` for a new database, `supabase/faq-schema.sql`, `supabase/faq-seed.sql`, `supabase/personas-schema.sql`, `supabase/conversation-personas.sql` and `supabase/quota-hardening.sql` in order. Existing installations apply only the new migrations and updated seed after backup/staging verification; do not rerun non-idempotent old policy creation blindly.
 3. Use that project's URL and publishable key for `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`.
 4. Set `SUPABASE_SERVICE_ROLE_KEY` to the server-only **legacy service_role JWT** for the project. Never expose this to client code or commit it.
 5. Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for the browser to the same project URL and publishable key. Enable email/password authentication and configure your application's URL in Supabase Auth.
 6. Set `ALLOW_LOCAL_DEMO=false`, restart the app, and sign in through the frontend. Set `AI_MOCK_MODE=false` and supply real provider credentials for live AI responses.
 
-The chat server validates the caller against Supabase Auth, verifies conversation ownership under RLS, loads the most recent 12 messages, atomically consumes one per-user per-minute quota slot (6/minute), and writes user/assistant messages through its server-only service-role client. Browser clients have no direct message INSERT policy.
+The chat server validates Supabase Auth, checks owner and immutable persona/version binding before reading context, loads the most recent 12 messages, and consumes atomic 6/minute and 60/day quotas. The service-only `store_persona_exchange` RPC rechecks owner/profile/version under a row lock and writes both turns atomically. Browser clients cannot insert messages or publish persona packages directly.
 
 **Database security note:** deploy only after verifying RLS, permissions, Auth and quotas on the selected project. Rate limits also need project-wide daily spending controls for a public launch.
 
@@ -74,11 +77,12 @@ Request:
 {
   "conversationId": null,
   "message": "What is West Lake and why is it culturally significant?",
-  "language": "en"
+  "language": "en",
+  "personaId": "tourmate"
 }
 ```
 
-For the first message omit `conversationId` or set it to `null`. Reuse the returned UUID on later messages. Language accepts `en` or `zh`.
+For the first message omit `conversationId` or set it to `null`. Reuse the returned UUID and same `personaId` on later messages. Language accepts `en` or `zh`. `personaId` defaults to `tourmate`. A profile/version mismatch returns 409 and requires a new trip; old history remains saved. The response also includes public `persona` identity and `ai.mode` (`curated_faq`, `curated_faq_fallback`, `evidence_composition`, or `persona_identity`).
 
 Successful response (example; not guaranteed text):
 
@@ -94,7 +98,7 @@ Successful response (example; not guaranteed text):
 
 The optional `faq` field is present only for an allowed database answer. No match returns `redirected`, no sources and no FAQ metadata. Existing clients that ignore `faq` remain compatible. Safety statuses: `allowed`, `blocked`, `emergency`, `redirected`, `sanitized`. Possible HTTP errors: 400 invalid input, 401 invalid/missing auth, 404 conversation not owned/found, 413 oversize input, 429 rate limit, 502 provider failure, 503 server/database unavailable or unconfigured, 504 timeout.
 
-To send user credentials from the frontend, get a valid Supabase session access token using the frontend auth SDK; **never** send the service-role key. The frontend can display `sources` as verified reference links. Do not claim that sources prove live opening hours or pricing.
+Use a valid Supabase session access token; **never** send the service-role key. Display sources as administrator-supplied references, not independently verified facts or live data. The application does not browse citation URLs.
 
 **GET `/api/status`** returns non-sensitive booleans describing configuration. It does not ping third-party services.
 

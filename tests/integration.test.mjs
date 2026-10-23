@@ -46,6 +46,12 @@ function services(t, options = {}) {
       assert.equal(headers.get("Authorization"), "Bearer test-server-only-key");
       return Response.json(!options.quotaExceeded);
     }
+    if (url.pathname === "/rest/v1/rpc/store_persona_exchange") {
+      assert.equal(headers.get("Authorization"), "Bearer test-server-only-key");
+      assert.equal(body.p_persona_id, "tourmate");
+      assert.equal(body.p_persona_version, 1);
+      return Response.json(true);
+    }
     if (url.pathname === "/rest/v1/conversations") {
       assert.equal(headers.get("Authorization"), "Bearer test-user-token");
       return Response.json(options.foreignConversation ? [] : [{ id }]);
@@ -58,7 +64,7 @@ function services(t, options = {}) {
     if (url.hostname === "provider.example.test") {
       assert.equal(url.pathname, "/v1/responses");
       assert.ok(Array.isArray(body.input));
-      assert.deepEqual(Object.keys(body).sort(), ["input", "model", "stream"]);
+      assert.deepEqual(Object.keys(body).sort(), ["input", "max_output_tokens", "model", "store", "stream"]);
       assert.equal(body.stream, false);
       assert.equal(headers.get("Authorization"), "Bearer test-provider-key");
       if (options.providerFailure) return Response.json({}, { status: 500 });
@@ -77,9 +83,9 @@ test("signed-in chat enforces ownership, stores both turns and never leaks keys"
   assert.equal(response.status, 200);
   assert.equal(data.conversationId, id);
   assert.equal(data.safety.status, "allowed");
-  const stored = calls.find((call) => call.url.pathname === "/rest/v1/messages" && call.method === "POST");
-  assert.deepEqual(stored.body.map((message) => message.role), ["user", "assistant"]);
-  assert.ok(stored.body[0].created_at < stored.body[1].created_at);
+  const stored = calls.find((call) => call.url.pathname === "/rest/v1/rpc/store_persona_exchange");
+  assert.equal(stored.body.p_user_message, "Tell me about West Lake");
+  assert.equal(stored.body.p_assistant_message, data.reply);
   assert.ok(!JSON.stringify(data).includes("test-server-only-key"));
 });
 
@@ -141,9 +147,11 @@ test("provider free text cannot become an answer and server history remains boun
   const response = await POST(request());
   const data = await response.json();
   assert.equal(response.status, 200);
-  assert.equal(data.safety.status, "redirected");
+  assert.equal(data.safety.status, "allowed");
   assert.ok(!data.reply.includes("17:00"));
-  assert.deepEqual(data.sources, []);
+  assert.equal(data.reply, CHINA_TOURISM_FAQS[60].answer_en);
+  assert.deepEqual(data.sources, CHINA_TOURISM_FAQS[60].sources);
+  assert.equal(data.ai.mode, "curated_faq_fallback");
   const provider = calls.find((call) => call.url.hostname === "provider.example.test");
   assert.deepEqual(provider.body.input.slice(1, 3).map((message) => message.role), ["user", "user"]);
   assert.deepEqual(provider.body.input.slice(1, 3).map((message) => JSON.parse(message.content).originalSpeaker), ["user", "assistant"]);
@@ -158,13 +166,13 @@ test("AI selects an ID but only its exact stored answer reaches the client and h
   assert.equal(data.reply, faq.answer_en);
   assert.equal(data.faq.id, faq.id);
   assert.deepEqual(data.sources, faq.sources);
-  const stored = calls.find((call) => call.url.pathname === "/rest/v1/messages" && call.method === "POST");
-  assert.equal(stored.body[1].content, faq.answer_en);
+  const stored = calls.find((call) => call.url.pathname === "/rest/v1/rpc/store_persona_exchange");
+  assert.equal(stored.body.p_assistant_message, faq.answer_en);
   const provider = calls.find((call) => call.url.hostname === "provider.example.test");
   assert.match(provider.body.input[0].content, /CN061/);
   assert.doesNotMatch(provider.body.input[0].content, /CN100/);
   assert.equal(provider.body.model, "test-model");
-  assert.deepEqual(Object.keys(provider.body).sort(), ["input", "model", "stream"]);
+  assert.deepEqual(Object.keys(provider.body).sort(), ["input", "max_output_tokens", "model", "store", "stream"]);
   assert.equal(provider.body.stream, false);
 });
 
@@ -192,7 +200,7 @@ test("provider errors safely fall back to an exact curated FAQ, with transparent
   assert.equal(data.faq.id, "CN061");
   assert.equal(data.ai.mode, "curated_faq_fallback");
   assert.equal(data.reply, CHINA_TOURISM_FAQS.find((f) => f.id === "CN061").answer_en);
-  assert.ok(calls.some((call) => call.url.pathname === "/rest/v1/messages" && call.method === "POST"));
+  assert.ok(calls.some((call) => call.url.pathname === "/rest/v1/rpc/store_persona_exchange"));
 });
 
 test("provider outages never invent an answer for unmatched tourism questions", async (t) => {
@@ -266,19 +274,19 @@ test("restored local history is used after restart but cannot add privileged sys
   assert.equal(JSON.parse(messages[1].content).type, "untrusted_historical_turn");
 });
 
-test("opt-in grounded mode returns a natural AI reply, not the fixed FAQ answer", async (t) => {
+test("opt-in grounded mode composes only approved evidence, never model prose", async (t) => {
   configure(t, { AI_MOCK_MODE: "false", AI_RESPONSE_MODE: "grounded" });
-  const calls = services(t, { reply: "West Lake is a cultural landscape shaped by Chinese poetry and gardens." });
+  const calls = services(t, { reply: '{"decision":"answer","recordIds":["CN061"]}' });
   const response = await POST(request());
   const data = await response.json();
   assert.equal(response.status, 200);
   assert.equal(data.safety.status, "allowed");
-  assert.match(data.reply, /poetry and gardens/);
-  assert.equal(data.ai.mode, "grounded_generation");
+  assert.ok(data.reply.includes(CHINA_TOURISM_FAQS[60].answer_en));
+  assert.equal(data.ai.mode, "evidence_composition");
   assert.equal(data.faq, undefined);
   const providerCalls = calls.filter(call => call.url.hostname === "provider.example.test");
   assert.equal(providerCalls.length, 1);
-  assert.deepEqual(Object.keys(providerCalls[0].body).sort(), ["input", "model", "stream"]);
+  assert.deepEqual(Object.keys(providerCalls[0].body).sort(), ["input", "max_output_tokens", "model", "store", "stream"]);
 });
 
 test("grounded mode provider outage falls back without a second failed AI call", async (t) => {

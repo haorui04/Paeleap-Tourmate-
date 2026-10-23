@@ -41,7 +41,7 @@ const copy = {
   }
 };
 
-export default function AuthPanel({ language, client }) {
+export default function AuthPanel({ language, client, administrator = false }) {
   const t = copy[language] || copy.en;
   const [mode, setMode] = useState("signIn");
   const [email, setEmail] = useState("");
@@ -77,9 +77,9 @@ export default function AuthPanel({ language, client }) {
     <section className="auth-wrap" aria-labelledby="auth-title">
       <div className="auth-card">
         <div className="auth-mark" aria-hidden="true">旅</div>
-        <p className="section-kicker">{t.eyebrow}</p>
-        <h1 id="auth-title">{t.title}</h1>
-        <p className="auth-intro">{t.body}</p>
+        <p className="section-kicker">{administrator ? (language === "zh" ? "管理员工作台" : "ADMINISTRATOR WORKSPACE") : t.eyebrow}</p>
+        <h1 id="auth-title">{administrator ? (language === "zh" ? "管理员登录" : "Administrator sign-in") : t.title}</h1>
+        <p className="auth-intro">{administrator ? (language === "zh" ? "请使用已被授权管理场馆资料的账户。普通访客账户没有发布权限。" : "Use an account authorized to manage venue profiles. Visitor accounts do not have publishing access.") : t.body}</p>
 
         {!client ? (
           <div className="notice notice-warning" role="status">{t.unavailable}</div>
@@ -104,7 +104,7 @@ export default function AuthPanel({ language, client }) {
           </form>
         )}
 
-        {client && (
+        {client && !administrator && (
           <p className="auth-switch">
             {mode === "signIn" ? t.newUser : t.existingUser}{" "}
             <button type="button" onClick={switchMode} disabled={busy}>

@@ -28,9 +28,9 @@ test("grounded mode uses SUB2API_API_KEY from Codex config when configured",asyn
       assert.equal(url,"https://api.miaoquai.com/v1/responses");
       assert.equal(init.headers.Authorization,"Bearer test-dedicated");
       return Response.json({status:"completed",output:[{type:"message",role:"assistant",
-        content:[{type:"output_text",text:"West Lake is in Hangzhou."}]}]});
+        content:[{type:"output_text",text:'{"decision":"answer","recordIds":["CN061"]}'}]}]});
     }
   });
   assert.equal(calls,1);
-  assert.equal(result.mode,"grounded_generation");
+  assert.equal(result.mode,"evidence_composition");
 });

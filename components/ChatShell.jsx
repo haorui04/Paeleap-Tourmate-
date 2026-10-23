@@ -5,6 +5,7 @@ import AuthPanel from "./AuthPanel.jsx";
 import useTripHistory from "./useTripHistory.js";
 import { getSupabaseBrowserClient } from "../lib/client/supabase.js";
 import { localHistoryForRequest } from "../lib/client/trips.js";
+import { DEFAULT_PERSONA_ID, parsePublicPersona, personaIdFromSearch, provenanceLabel } from "../lib/client/personas.js";
 import {
   MAX_MESSAGE_LENGTH,
   SAFETY_LABELS,
@@ -29,7 +30,7 @@ const text = {
     storageError: "This browser couldn't save your history. Chats will remain available while this page is open.",
     emptyTrip: "Your first plan starts here",
     trustTitle: "Designed for safer travel",
-    trustBody: "100 bilingual China-travel FAQs, with safety checks before every answer.",
+    trustBody: "Administrator-selected knowledge with server-side scope and safety checks.",
     disclaimer: "AI can make mistakes. Confirm live hours, prices and transport with official providers.",
     signOut: "Sign out",
     localDemo: "Offline FAQ mode",
@@ -47,13 +48,16 @@ const text = {
     send: "Send message",
     stop: "Stop response",
     enterHint: "Enter to send · Shift + Enter for a new line",
-    sourceTitle: "Official references",
+    sourceTitle: "Reference links",
     faqLabel: "Travel FAQ",
     copied: "Copied",
     copy: "Copy response",
     dismiss: "Dismiss",
     thinking: "Looking through the travel notes",
     loading: "Preparing your travel space…",
+    profileError: "This assistant profile could not be loaded. Check the museum link or try again.",
+    profileTitle: "Assistant unavailable",
+    profileVersion: "Profile version",
     today: "Current conversation",
     suggestions: [
       { title: "Getting around", body: "Book a train with your passport", prompt: "How do I book a train ticket in China?" },
@@ -75,7 +79,7 @@ const text = {
     storageError: "浏览器无法保存历史记录。当前页面保持打开时仍可查看对话。",
     emptyTrip: "从这里开始你的第一个计划",
     trustTitle: "为安心旅行而设计",
-    trustBody: "100 题中英双语中国旅游问答，每次回复前均先执行安全检查。",
+    trustBody: "使用管理员配置的知识资料，并执行服务端范围和安全检查。",
     disclaimer: "AI 可能出错。实时开放时间、票价和交通信息请以官方渠道为准。",
     signOut: "退出登录",
     localDemo: "离线问答模式",
@@ -93,13 +97,16 @@ const text = {
     send: "发送消息",
     stop: "停止回复",
     enterHint: "按 Enter 发送 · Shift + Enter 换行",
-    sourceTitle: "官方参考资料",
+    sourceTitle: "参考资料链接",
     faqLabel: "旅游问答",
     copied: "已复制",
     copy: "复制回复",
     dismiss: "关闭",
     thinking: "正在查阅旅行资料",
     loading: "正在准备你的旅行空间…",
+    profileError: "无法加载此助手配置，请检查场馆链接或重试。",
+    profileTitle: "助手暂不可用",
+    profileVersion: "配置版本",
     today: "当前对话",
     suggestions: [
       { title: "轻松出行", body: "了解如何使用护照购买火车票", prompt: "在中国如何预订火车票？" },
@@ -124,11 +131,11 @@ function Icon({ name, size = 20 }) {
   return null;
 }
 
-function Brand() {
+function Brand({ name = "paeleap", avatar = "旅" }) {
   return (
-    <div className="brand" aria-label="Paeleap TourMate">
-      <span className="brand-symbol" aria-hidden="true"><span>旅</span></span>
-      <span className="brand-name">paeleap</span>
+    <div className="brand" aria-label={name}>
+      <span className="brand-symbol" aria-hidden="true"><span>{avatar}</span></span>
+      <span className="brand-name">{name}</span>
     </div>
   );
 }
@@ -143,12 +150,12 @@ function SafetyBadge({ status, language }) {
   );
 }
 
-function Message({ message, language, copied, onCopy }) {
+function Message({ message, language, copied, onCopy, avatar }) {
   const t = text[language];
   const assistant = message.role === "assistant";
   return (
     <article className={`message-row ${assistant ? "assistant-row" : "user-row"}`}>
-      {assistant && <div className="assistant-avatar" aria-hidden="true">旅</div>}
+      {assistant && <div className="assistant-avatar" aria-hidden="true">{avatar}</div>}
       <div className="message-column">
         <div className={`message-bubble ${assistant ? "assistant-bubble" : "user-bubble"}`}>
           <p>{message.content}</p>
@@ -160,8 +167,8 @@ function Message({ message, language, copied, onCopy }) {
             </time>}
             {assistant && <SafetyBadge status={message.safety} language={language} />}
             {assistant && message.faq && <span className="grounded-label" title={message.faq.question}>{t.faqLabel} · {message.faq.id}</span>}
-            {message.safety === "allowed" && message.sources?.length > 0 && (
-              <span className="grounded-label"><Icon name="shield" size={14} />{SAFETY_LABELS[language].allowed}</span>
+            {assistant && message.safety === "allowed" && provenanceLabel(message.ai?.mode, language) && (
+              <span className="grounded-label">{provenanceLabel(message.ai.mode, language)}</span>
             )}
             {assistant && <button className="copy-button" type="button" onClick={() => onCopy(message)} aria-label={t.copy}>
               <Icon name="copy" size={14} />{copied === message.id ? t.copied : t.copy}
@@ -188,6 +195,8 @@ export default function ChatShell() {
   const [language, setLanguage] = useState("en");
   const [service, setService] = useState({ state: "loading", data: null });
   const [statusAttempt, setStatusAttempt] = useState(0);
+  const [personaId, setPersonaId] = useState(null);
+  const [profile, setProfile] = useState({ state: "loading", data: null });
   const [authClient, setAuthClient] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [session, setSession] = useState(null);
@@ -199,6 +208,43 @@ export default function ChatShell() {
   const sidebarRef = useRef(null);
   const historyButtonRef = useRef(null);
   const t = text[language];
+  const persona = profile.data;
+  const personaName = persona?.name[language] || "Paeleap";
+  const avatar = persona?.id === DEFAULT_PERSONA_ID ? "旅" : Array.from(personaName)[0];
+  const personaReady = profile.state === "ready";
+
+  useEffect(() => {
+    function selectPersona() {
+      try { setPersonaId(personaIdFromSearch(window.location.search)); }
+      catch { setPersonaId(null); setProfile({ state: "error", data: null }); }
+    }
+    selectPersona();
+    window.addEventListener("popstate", selectPersona);
+    return () => window.removeEventListener("popstate", selectPersona);
+  }, []);
+
+  useEffect(() => {
+    if (!personaId) return undefined;
+    const controller = new AbortController();
+    let active = true;
+    const timeout = window.setTimeout(() => controller.abort(), 10000);
+    setProfile({ state: "loading", data: null });
+    fetch(`/api/personas?id=${encodeURIComponent(personaId)}`, { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Assistant unavailable");
+        const payload = await response.json();
+        const next = parsePublicPersona(payload.persona);
+        if (next.id !== personaId) throw new Error("Mismatched assistant profile");
+        if (active) setProfile({ state: "ready", data: next });
+      })
+      .catch(() => { if (active) setProfile({ state: "error", data: null }); })
+      .finally(() => window.clearTimeout(timeout));
+    return () => { active = false; window.clearTimeout(timeout); controller.abort(); };
+  }, [personaId, statusAttempt]);
+
+  useEffect(() => {
+    if (persona) document.title = `${persona.name[language]} · ${persona.venue[language]}`;
+  }, [persona, language]);
 
   useEffect(() => {
     try {
@@ -254,8 +300,8 @@ export default function ChatShell() {
   }, []);
 
   const demoMode = service.data?.localDemoMode === true;
-  const chatIdentity = demoMode ? "demo" : session?.user?.id || null;
-  const history = useTripHistory(chatIdentity, authClient);
+  const chatIdentity = !personaReady ? null : demoMode ? "demo" : session?.user?.id || null;
+  const history = useTripHistory(chatIdentity, authClient, personaId || DEFAULT_PERSONA_ID);
   const { trips, activeTrip } = history;
   const messages = activeTrip?.messages || [];
   const draft = activeTrip?.draft || "";
@@ -266,7 +312,7 @@ export default function ChatShell() {
   useEffect(() => () => {
     for (const controller of requestsRef.current.values()) controller.abort();
     requestsRef.current.clear();
-  }, [chatIdentity]);
+  }, [chatIdentity, personaId]);
 
   useEffect(() => {
     if (!sidebarOpen) return undefined;
@@ -372,7 +418,7 @@ export default function ChatShell() {
   async function submitMessage(event) {
     event.preventDefault();
     const message = draft.trim();
-    if (!activeTrip || historyUnavailable || !message || pending || requestsRef.current.has(activeTrip.id) || message.length > MAX_MESSAGE_LENGTH) return;
+    if (!personaReady || !activeTrip || historyUnavailable || !message || pending || requestsRef.current.has(activeTrip.id) || message.length > MAX_MESSAGE_LENGTH) return;
     const tripId = activeTrip.id;
     const conversationId = activeTrip.conversationId;
     const previousMessages = activeTrip.messages;
@@ -408,7 +454,7 @@ export default function ChatShell() {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers,
-        body: JSON.stringify({ ...buildChatBody({ message, conversationId, language }),
+        body: JSON.stringify({ ...buildChatBody({ message, conversationId, language, personaId }),
           ...(demoMode ? { history: localHistoryForRequest(previousMessages) } : {}) }),
         signal: controller.signal
       });
@@ -420,6 +466,7 @@ export default function ChatShell() {
         throw requestError;
       }
       const parsed = parseChatResponse(payload);
+      if (parsed.persona && parsed.persona.id !== personaId) throw new Error("Mismatched assistant reply");
       if (requestsRef.current.get(tripId) !== controller) return;
       const repliedAt = new Date().toISOString();
       history.updateTrip(tripId, (trip) => ({ ...trip, conversationId: parsed.conversationId,
@@ -429,6 +476,8 @@ export default function ChatShell() {
         content: parsed.reply,
         sources: parsed.sources,
         safety: parsed.safety,
+        ...(parsed.ai ? { ai: parsed.ai } : {}),
+        ...(parsed.persona ? { persona: parsed.persona } : {}),
         ...(parsed.faq ? { faq: parsed.faq } : {}),
         createdAt: repliedAt
       }] }));
@@ -455,8 +504,16 @@ export default function ChatShell() {
     requestsRef.current.get(activeTrip?.id)?.abort();
   }
 
-  const showLoading = service.state === "loading" || (!demoMode && !authReady) || (chatIdentity && !history.ready);
+  const showLoading = service.state === "loading" || profile.state === "loading" || (!demoMode && !authReady) || (chatIdentity && !history.ready);
   const needsAuthentication = !demoMode && authReady && !session;
+  const suggestions = persona?.id === DEFAULT_PERSONA_ID ? t.suggestions : [
+    { title: language === "zh" ? "认识导览助手" : "Meet your guide", body: personaName,
+      prompt: language === "zh" ? "你是谁？" : "Who are you?" },
+    { title: language === "zh" ? "探索场馆" : "Explore the venue", body: persona?.venue[language] || "",
+      prompt: language === "zh" ? `请介绍${persona?.venue.zh || "这个场馆"}。` : `Tell me about ${persona?.venue.en || "this venue"}.` },
+    { title: language === "zh" ? "参观帮助" : "Visitor information", body: language === "zh" ? "查阅馆方提供的资料" : "Ask about the venue's visitor guidance",
+      prompt: language === "zh" ? "参观这个场馆有哪些需要了解的信息？" : "What should I know before visiting this venue?" }
+  ];
 
   return (
     <div className="app-shell grid min-h-dvh grid-cols-[288px_minmax(0,1fr)] max-[900px]:grid-cols-[235px_minmax(0,1fr)] max-[720px]:block">
@@ -464,8 +521,9 @@ export default function ChatShell() {
       <aside id="trips-sidebar" ref={sidebarRef} className={`sidebar ${sidebarOpen ? "is-open" : ""}`} aria-label={t.tripNavigation}>
         <div className="sidebar-brand-row">
           <div>
-          <Brand />
+          <Brand name={personaName} avatar={avatar} />
           <p className="brand-tag">{t.brandTag}</p>
+          {persona && <p className="venue-name">{persona.venue[language]}</p>}
           </div>
           <button className="sidebar-close" type="button" aria-label={t.closeTrips} onClick={() => { setSidebarOpen(false); historyButtonRef.current?.focus(); }}><Icon name="close" size={20} /></button>
         </div>
@@ -499,13 +557,14 @@ export default function ChatShell() {
 
       <main className="main-panel min-w-0" inert={sidebarOpen ? true : undefined}>
         <header className="topbar">
-          <div className="mobile-brand"><Brand /></div>
+          <div className="mobile-brand"><Brand name={personaName} avatar={avatar} /></div>
           <button className="mobile-history" ref={historyButtonRef} type="button" aria-label={t.openTrips}
             aria-expanded={sidebarOpen} aria-controls="trips-sidebar" onClick={() => setSidebarOpen(true)}><Icon name="menu" size={19} /></button>
           <button className="mobile-new-trip" type="button" onClick={startNewTrip} disabled={!history.ready} aria-label={t.newTrip}>
             <Icon name="plus" size={19} />
           </button>
           <div className="service-pill"><span className={`status-dot ${service.state}`} />{statusLabel}</div>
+          {persona && <span className="profile-identity" title={`${t.profileVersion} ${persona.version}`}>{personaName}</span>}
           <div className="topbar-actions">
             <div className="language-toggle" aria-label="Language">
               <button type="button" className={language === "en" ? "active" : ""} onClick={() => changeLanguage("en")} aria-pressed={language === "en"}>EN</button>
@@ -527,6 +586,14 @@ export default function ChatShell() {
               <button className="primary-button" type="button" onClick={() => setStatusAttempt((attempt) => attempt + 1)}>{t.retry}</button>
             </div>
           </section>
+        ) : profile.state === "error" ? (
+          <section className="auth-wrap" aria-labelledby="profile-error-title">
+            <div className="auth-card">
+              <h1 id="profile-error-title">{t.profileTitle}</h1>
+              <p className="auth-intro">{t.profileError}</p>
+              <button className="primary-button" type="button" onClick={() => setStatusAttempt((attempt) => attempt + 1)}>{t.retry}</button>
+            </div>
+          </section>
         ) : needsAuthentication ? (
           <AuthPanel language={language} client={authClient} />
         ) : (
@@ -540,12 +607,12 @@ export default function ChatShell() {
                 </div>
               ) : messages.length === 0 ? (
                 <div className="welcome-panel">
-                  <div className="welcome-seal" aria-hidden="true"><span>旅</span></div>
-                  <p className="section-kicker">{t.welcomeKicker}</p>
-                  <h1>{t.welcomeTitle}</h1>
-                  <p className="welcome-copy">{t.welcomeBody}</p>
+                  <div className="welcome-seal" aria-hidden="true"><span>{avatar}</span></div>
+                  <p className="section-kicker">{persona?.venue[language] || t.welcomeKicker}</p>
+                  <h1>{personaName}</h1>
+                  <p className="welcome-copy">{persona?.greeting[language] || t.welcomeBody}</p>
                   <div className="suggestion-grid grid grid-cols-3 gap-3 text-left max-[900px]:grid-cols-1">
-                    {t.suggestions.map((suggestion, index) => (
+                    {suggestions.map((suggestion, index) => (
                       <button key={suggestion.title} type="button" className="suggestion-card" onClick={() => chooseSuggestion(suggestion.prompt)}>
                         <span className="suggestion-number">0{index + 1}</span>
                         <strong>{suggestion.title}</strong>
@@ -557,10 +624,10 @@ export default function ChatShell() {
                 </div>
               ) : (
                 <div className="message-list" aria-live="polite">
-                  {messages.map((message) => <Message key={message.id} message={message} language={language} copied={copied} onCopy={copyMessage} />)}
+                  {messages.map((message) => <Message key={message.id} message={message} language={language} copied={copied} onCopy={copyMessage} avatar={avatar} />)}
                   {pending && (
                     <div className="message-row assistant-row" role="status">
-                      <div className="assistant-avatar" aria-hidden="true">旅</div>
+                      <div className="assistant-avatar" aria-hidden="true">{avatar}</div>
                       <div className="typing-bubble"><span /><span /><span /><em>{t.thinking}</em></div>
                     </div>
                   )}
@@ -579,16 +646,16 @@ export default function ChatShell() {
                 </div>
               )}
               <form className="composer" onSubmit={submitMessage}>
-                <label className="sr-only" htmlFor="chat-message">{t.composerLabel}</label>
+                <label className="sr-only" htmlFor="chat-message">{language === "zh" ? `询问${personaName}` : `Ask ${personaName}`}</label>
                 <textarea id="chat-message" ref={textareaRef} rows="1" maxLength={MAX_MESSAGE_LENGTH}
-                  placeholder={t.placeholder} value={draft} onChange={(event) => setDraft(event.target.value)}
-                  onInput={resizeTextarea} onKeyDown={onComposerKeyDown} disabled={pending || historyUnavailable} />
+                  placeholder={persona?.id === DEFAULT_PERSONA_ID ? t.placeholder : language === "zh" ? `向${personaName}询问场馆相关问题…` : `Ask ${personaName} about this venue…`} value={draft} onChange={(event) => setDraft(event.target.value)}
+                  onInput={resizeTextarea} onKeyDown={onComposerKeyDown} disabled={!personaReady || pending || historyUnavailable} />
                 <div className="composer-bottom">
                   <span className={`character-count ${draft.length > 1350 ? "near-limit" : ""}`}>{draft.length}/{MAX_MESSAGE_LENGTH}</span>
                   {pending ? (
                     <button className="send-button stop-button" type="button" onClick={stopResponse} aria-label={t.stop}><Icon name="stop" size={18} /></button>
                   ) : (
-                    <button className="send-button" type="submit" disabled={!draft.trim() || historyUnavailable} aria-label={t.send}><Icon name="send" size={18} /></button>
+                    <button className="send-button" type="submit" disabled={!personaReady || !draft.trim() || historyUnavailable} aria-label={t.send}><Icon name="send" size={18} /></button>
                   )}
                 </div>
               </form>

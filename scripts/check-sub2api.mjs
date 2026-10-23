@@ -7,7 +7,8 @@ import { aiFailureCode } from "../lib/ai/diagnostics.js";
 
 const key = resolveAiApiKey();
 const baseUrl = process.env.AI_BASE_URL || "https://api.miaoquai.com/v1";
-const model = process.env.AI_MODEL;\nconst protocol = aiProtocol();
+const model = process.env.AI_MODEL;
+const protocol = aiProtocol();
 if (!hasConfiguredValue(key) || !hasConfiguredValue(model)) {
   console.error(JSON.stringify({result:"NOT_RUN",code:"PROVIDER_CONFIG_MISSING",
     instructions:"Set a rotated SUB2API_API_KEY or AI_API_KEY, and the exact AI_MODEL supported by its group."}));

@@ -58,6 +58,13 @@ function services(t, options = {}) {
       assert.equal(body.p_user_id, options.expectedUser || USER_A);
       return Response.json(!options.quotaDenied);
     }
+    if (url.pathname === "/rest/v1/rpc/store_persona_exchange") {
+      assert.equal(token, SERVICE);
+      assert.equal(body.p_persona_id, "tourmate");
+      assert.equal(body.p_persona_version, 1);
+      if (options.writeError) throw new Error(options.writeError);
+      return Response.json(!options.ownerChanges);
+    }
     if (url.pathname === "/rest/v1/conversations") {
       const owner = token === TOKEN_A ? USER_A : token === TOKEN_B ? USER_B : null;
       assert.ok(owner, "Conversation ownership must be checked under the user's JWT, never service role");
@@ -206,10 +213,10 @@ test("BOUNDARY14 a mismatched database ID is denied despite a successful HTTP lo
   assert.equal(calls.some((x) => x.url.pathname === "/rest/v1/messages"), false);
 });
 
-test("BOUNDARY15 service-role write rechecks ownership immediately before insert", async (t) => {
+test("BOUNDARY15 owner/profile changes deny the request before history or insert", async (t) => {
   configure(t); const calls = services(t, { ownerChanges: true });
   t.mock.method(console, "error", () => {});
-  assert.equal((await POST(request())).status, 503);
+  assert.equal((await POST(request())).status, 409);
   assert.equal(calls.filter((x) => x.url.pathname === "/rest/v1/conversations").length, 2);
   assert.equal(calls.some((x) => x.url.pathname === "/rest/v1/messages" && x.method === "POST"), false);
 });
@@ -246,8 +253,8 @@ test("BOUNDARY19 successful replies contain no service-role or authentication cr
   assert.equal(response.headers.get("cache-control"), "no-store");
   assert.equal(response.headers.get("x-content-type-options"), "nosniff");
   assert.doesNotMatch(await response.text(), new RegExp(`${SERVICE}|${TOKEN_A}|synthetic-ai-key`));
-  const write = calls.find((x) => x.url.pathname === "/rest/v1/messages" && x.method === "POST");
-  assert.ok(write); assert.equal(write.body.every((x) => x.conversation_id === TRIP_A), true);
+  const write = calls.find((x) => x.url.pathname === "/rest/v1/rpc/store_persona_exchange");
+  assert.ok(write); assert.equal(write.body.p_conversation_id, TRIP_A);
 });
 
 test("BOUNDARY20 quota exhaustion blocks history/model/write work", async (t) => {

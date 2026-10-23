@@ -6,3 +6,5 @@ node_modules/
 *.log
 .DS_Store
 .paeleap/
+reports/*
+!reports/security-remediation-summary.json

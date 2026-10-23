@@ -27,23 +27,26 @@ test("minimal Sub2API request has only model/input/stream and no unsupported opt
   assert.match(got,/CN061/);
 });
 
-test("grounded generation uses Responses API with source-backed reference snippets",async()=>{
+test("evidence composition uses Responses API with source-backed reference snippets",async()=>{
   let called=0;
   const result=await generateGroundedReply({message:"Tell me about West Lake",language:"en",
     faqs:CHINA_TOURISM_FAQS,env:config,
     fetchImpl:async(url,init)=>{
       called++;assert.equal(url,"https://api.miaoquai.com/v1/responses");
       const body=JSON.parse(init.body);
-      assert.deepEqual(Object.keys(body).sort(),["input","model","stream"]);
+      assert.deepEqual(Object.keys(body).sort(),["input","max_output_tokens","model","store","stream"]);
+      assert.equal(body.max_output_tokens,512);
+      assert.equal(body.store,false);
       assert.match(body.input[0].content,/TourMate/);
       assert.match(body.input[1].content,/untrusted_faq_data/);
       assert.equal(body.input.at(-1).content,"Tell me about West Lake");
-      return answer("West Lake is a renowned cultural landscape in Hangzhou.");
+      return answer('{"decision":"answer","recordIds":["CN061"]}');
     }});
   assert.equal(called,1);
   assert.equal(result.status,"allowed");
   assert.match(result.reply,/West Lake/);
-  assert.equal(result.mode,"grounded_generation");
+  assert.equal(result.reply,CHINA_TOURISM_FAQS.find(record=>record.id==="CN061").answer_en);
+  assert.equal(result.mode,"evidence_composition");
   assert.ok(result.sources.every(item=>item.url.startsWith("https://")));
 });
 
@@ -71,10 +74,8 @@ test("guardrails block unsafe requests before requesting the provider",async()=>
   assert.equal(requests,0);
 });
 
-test("generated unsupported dynamic ticket prices are sanitized",async()=>{
-  const result=await generateGroundedReply({message:"Tell me about West Lake",language:"en",
+test("freeform dynamic ticket prices fail closed before rendering or attribution",async()=>{
+  await assert.rejects(generateGroundedReply({message:"Tell me about West Lake",language:"en",
     faqs:CHINA_TOURISM_FAQS,env:config,
-    fetchImpl:async()=>answer("The attraction ticket costs 250 CNY.")});
-  assert.equal(result.status,"sanitized");
-  assert.deepEqual(result.sources,[]);
+    fetchImpl:async()=>answer("The attraction ticket costs 250 CNY.")}),/Invalid evidence plan/);
 });
