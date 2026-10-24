@@ -17,7 +17,7 @@ import { execFileSync } from "node:child_process";
 import { performance } from "node:perf_hooks";
 import { REDTEAM_CASES, allEvaluationCases } from "../tests/fixtures/redteam-cases.mjs";
 
-const keys = ["NODE_ENV","ALLOW_LOCAL_DEMO","AI_MOCK_MODE","AI_BASE_URL","AI_API_KEY","AI_MODEL",
+const keys = ["NODE_ENV","ALLOW_LOCAL_DEMO","AI_MOCK_MODE","AI_BASE_URL","AI_API_KEY","AI_MODEL","AI_RESPONSE_MODE","AI_API_STYLE","SUB2API_API_KEY","PERSONA_LOAD_EXAMPLES","PERSONA_ADMIN_USER_IDS",
   "SUPABASE_URL","SUPABASE_PUBLISHABLE_KEY","SUPABASE_SERVICE_ROLE_KEY","FAQ_BANK_SOURCE","PRIVATE_CANARY"];
 const conversationId = "550e8400-e29b-41d4-a716-446655440000";
 const canaries = ["SYNTHETIC_SERVER_CANARY_7F2391", "synthetic-server-service-credential-7F2391", "synthetic-provider-credential-7F2391", "PRIVATE_OTHER_USER_CANARY_41", "UNTRUSTED_PROVIDER_FREE_TEXT_7F2391"];
@@ -39,11 +39,12 @@ export async function runEvaluation({ sourceRoot = resolve(dirname(fileURLToPath
   const settings = { NODE_ENV:"development", ALLOW_LOCAL_DEMO:"false", AI_MOCK_MODE:mode === "offline" ? "true" : "false",
     AI_BASE_URL:"https://provider.redteam.invalid/v1", AI_API_KEY:canaries[2], AI_MODEL:"synthetic-selector-no-real-model",
     SUPABASE_URL:"https://database.redteam.invalid", SUPABASE_PUBLISHABLE_KEY:"synthetic-public-key-7F2391",
-    SUPABASE_SERVICE_ROLE_KEY:canaries[1], FAQ_BANK_SOURCE:"local", PRIVATE_CANARY:canaries[0] };
+    SUPABASE_SERVICE_ROLE_KEY:canaries[1], FAQ_BANK_SOURCE:"local", PRIVATE_CANARY:canaries[0],
+    AI_RESPONSE_MODE:"faq",AI_API_STYLE:"responses",SUB2API_API_KEY:"replace_me",PERSONA_LOAD_EXAMPLES:"false",PERSONA_ADMIN_USER_IDS:"" };
   Object.assign(process.env,settings);
   process.chdir(sourceRoot);
   try {
-    const trackedFiles = ["app/api/chat/route.js","lib/config.js","lib/ai/safety.js","lib/ai/input-normalization.js","lib/ai/provider.js","lib/ai/prompts.js","lib/tourism/faq-matching.js","lib/db/faq.js","lib/db/supabase.js","data/china-tourism-faq.js"];
+    const trackedFiles = ["app/api/chat/route.js","lib/config.js","lib/ai/safety.js","lib/ai/input-normalization.js","lib/ai/provider.js","lib/ai/generate.js","lib/ai/prompts.js","lib/personas/index.js","lib/personas/validation.js","lib/tourism/faq-matching.js","lib/db/faq.js","lib/db/supabase.js","data/china-tourism-faq.js"];
     const fingerprintSources = async () => {
       const values = {};
       for (const path of trackedFiles) {
@@ -75,6 +76,11 @@ export async function runEvaluation({ sourceRoot = resolve(dirname(fileURLToPath
             return Response.json({id:"synthetic-owner-id"});
           }
           if (url.pathname === "/rest/v1/rpc/consume_chat_quota") return Response.json(true);
+          if (url.pathname === "/rest/v1/rpc/store_persona_exchange") {
+            if (headers.get("Authorization") !== "Bearer " + canaries[1] || body.p_persona_id !== "tourmate" || body.p_persona_version !== 1)
+              throw new Error("Invalid atomic persistence binding");
+            return Response.json(true);
+          }
           if (url.pathname === "/rest/v1/conversations") return Response.json([{id:conversationId}]);
           if (url.pathname === "/rest/v1/messages") {
             if (method === "POST") return new Response(null,{status:204});

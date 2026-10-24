@@ -1,11 +1,13 @@
-import { classifyInput, validateOutput } from "../../../lib/ai/safety.js";
+import { classifyInput, classifyPersonaInput, validateOutput } from "../../../lib/ai/safety.js";
 import { selectFaq, sanitizeFaqHistory } from "../../../lib/ai/provider.js";
 import { getFaqBank } from "../../../lib/db/faq.js";
 import { tourismOnlyReply, matchFaqOffline } from "../../../lib/tourism/faq-matching.js";
 import { authenticate, ensureConversation, getRecentMessages, storeExchange, consumeQuota } from "../../../lib/db/supabase.js";
-import { localDemoEnabled } from "../../../lib/config.js";
-import { generateGroundedReply } from "../../../lib/ai/generate.js";
+import { localDemoEnabled, mockAiEnabled } from "../../../lib/config.js";
+import { generateGroundedReply, renderEvidenceReply } from "../../../lib/ai/generate.js";
 import { aiFailureCode } from "../../../lib/ai/diagnostics.js";
+import { reviewedPlanningRecords } from "../../../lib/tourism/evidence-fallback.js";
+import { DEFAULT_PERSONA_ID, publicPersona, resolvePersona, personaKnowledge } from "../../../lib/personas/index.js";
 
 export const runtime = "nodejs";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -82,7 +84,11 @@ export async function POST(request) {
 
     const language = body.language === "zh" ? "zh" : body.language === "en" || body.language == null ? "en" : null;
     if (!language) return json({ error: "Language must be en or zh" }, 400);
-    const classified = classifyInput(body.message, language);
+    const personaId = body.personaId ?? DEFAULT_PERSONA_ID;
+    if (typeof personaId !== "string" || !/^[a-z][a-z0-9-]{1,63}$/.test(personaId)) {
+      return json({ error: "Invalid personaId" }, 400);
+    }
+    let classified = classifyInput(body.message, language);
     if (classified.status === "invalid") return json({ error: "Message must be 1–1500 characters" }, 400);
     if (body.conversationId != null && (typeof body.conversationId !== "string" || !UUID.test(body.conversationId))) {
       return json({ error: "conversationId must be a UUID or omitted" }, 400);
@@ -92,14 +98,22 @@ export async function POST(request) {
     let user = null;
     let conversationId = body.conversationId || null;
     let history = [];
+    let persona;
     if (demo) {
       if (!takeDemoSlot()) return json({ error: "Rate limit exceeded" }, 429);
+      persona = await resolvePersona(personaId);
+      if (!persona) return json({ error: "Persona not found" }, 404);
       conversationId ||= crypto.randomUUID();
       const now = Date.now();
       for (const [id, record] of demoConversations) {
         if (now - record.updatedAt > 30 * 60 * 1000) demoConversations.delete(id);
       }
-      history = demoConversations.get(conversationId)?.messages || localHistory(body.history);
+      const record = demoConversations.get(conversationId);
+      if (record && (record.personaId !== persona.id || record.personaVersion !== persona.version)) {
+        return json({ error: "Persona changed. Start a new conversation." }, 409);
+      }
+      // Do not import an arbitrary visitor's history into a custom museum.
+      history = record?.messages || (personaId === DEFAULT_PERSONA_ID ? localHistory(body.history) : []);
     } else {
       const bearer = request.headers.get("authorization")?.match(/^Bearer[ \t]+([^\s]+)$/i)?.[1];
       if (!bearer) return json({ error: "Authentication required" }, 401);
@@ -107,26 +121,49 @@ export async function POST(request) {
       user = await authenticate(bearer);
       if (!user) return json({ error: "Invalid session" }, 401);
       if (!await consumeQuota(user.id)) return json({ error: "Rate limit exceeded" }, 429);
-      conversationId = await ensureConversation(user, conversationId, body.message.trim());
+      persona = await resolvePersona(personaId);
+      if (!persona) return json({ error: "Persona not found" }, 404);
+      const binding = { id: persona.id, version: persona.version };
+      const ownedId = conversationId ? await ensureConversation(user, conversationId, "") : null;
+      if (conversationId && !ownedId) return json({ error: "Conversation not found" }, 404);
+      conversationId = await ensureConversation(user, conversationId, body.message.trim(), binding);
+      if (ownedId && !conversationId) return json({ error: "Persona changed. Start a new conversation." }, 409);
       if (!conversationId) return json({ error: "Conversation not found" }, 404);
       history = await getRecentMessages(user, conversationId);
     }
+
+    if (["allowed", "redirected"].includes(classified.status)) classified = classifyPersonaInput(body.message, language, history, persona);
+    if (persona.id !== DEFAULT_PERSONA_ID) persona = { ...persona, knowledge: personaKnowledge(persona) };
 
     let faq = null;
     let providerDegraded = false;
     let providerErrorCode = null;
     let generationUsed = false;
+    let generationMode = null;
     let generationSources = [];
     let verified = { reply: classified.reply, status: classified.status };
-    if (classified.status === "allowed") {
-      const faqs = await getFaqBank();
-      const groundedMode = process.env.AI_RESPONSE_MODE === "grounded" && !localDemoEnabled();
-      if (groundedMode) {
+    const identityQuestion = /^(?:who are you|what is your name|你是谁|你是誰|你叫什么名字|你叫什麼名字)[?？!！。\s]*$/i.test(body.message.trim());
+    const personaIdentity = classified.status === "allowed" && persona.id !== DEFAULT_PERSONA_ID && identityQuestion;
+    if (personaIdentity) {
+      // Identity is public administrator data, never a visitor/model-authored role.
+      verified = { reply: persona.greeting[language], status: "allowed" };
+    } else if (classified.status === "allowed") {
+      const faqs = persona.id === DEFAULT_PERSONA_ID ? await getFaqBank() : persona.knowledge;
+      const planningRecords = persona.id === DEFAULT_PERSONA_ID ? reviewedPlanningRecords(body.message, faqs) : [];
+      if (planningRecords.length) {
+        verified = { reply: renderEvidenceReply(planningRecords, language, persona), status: "allowed" };
+        generationUsed = true;
+        generationMode = "curated_evidence";
+        generationSources = [...new Map(planningRecords.flatMap(record => record.sources || []).map(source => [source.url, source])).values()];
+      }
+      const groundedMode = (process.env.AI_RESPONSE_MODE === "grounded" || persona.id !== DEFAULT_PERSONA_ID) && !demo && !mockAiEnabled();
+      if (groundedMode && !generationUsed) {
         try {
-          const generated = await generateGroundedReply({ message: body.message.trim(), language, history, faqs });
+          const generated = await generateGroundedReply({ message: body.message.trim(), language, history, faqs, persona });
           verified = { reply: generated.reply, status: generated.status };
           generationSources = generated.sources;
           generationUsed = true;
+          generationMode = generated.mode;
         } catch (error) {
           // Never turn raw upstream errors into user-visible text.
           providerDegraded = true;
@@ -141,7 +178,7 @@ export async function POST(request) {
         try {
           // Grounded generation failure uses the deterministic matcher directly;
           // do not repeatedly call a failed provider during the same request.
-          selection = providerDegraded ? matchFaqOffline(body.message.trim(), faqs, sanitizeFaqHistory(history))
+          selection = providerDegraded || persona.id !== DEFAULT_PERSONA_ID ? matchFaqOffline(body.message.trim(), faqs, sanitizeFaqHistory(history), { allowReviewedTopics: persona.id !== DEFAULT_PERSONA_ID })
             : await selectFaq({ message: body.message.trim(), language, history, faqs });
         } catch (error) {
           providerDegraded = true;
@@ -149,33 +186,38 @@ export async function POST(request) {
           console.warn("AI matching degraded; using curated FAQ fallback", {
             kind: /AI provider returned HTTP/.test(error?.message || "") ? "upstream_http" : "upstream_format_or_network"
           });
-          selection = matchFaqOffline(body.message.trim(), faqs, sanitizeFaqHistory(history));
+          selection = matchFaqOffline(body.message.trim(), faqs, sanitizeFaqHistory(history), { allowReviewedTopics: persona.id !== DEFAULT_PERSONA_ID });
         }
         faq = selection ? faqs.find((item) => item.id === selection.faqId) : null;
-        verified = faq ? validateOutput(faq[language === "zh" ? "answer_zh" : "answer_en"], language)
+        verified = faq ? (persona.id === DEFAULT_PERSONA_ID ? validateOutput(faq[language === "zh" ? "answer_zh" : "answer_en"], language)
+          : { reply: renderEvidenceReply([faq], language, persona), status: "allowed" })
           : { reply: providerDegraded
             ? (language === "zh" ? "AI生成服务暂时不可用，请稍后重试。" : "AI generation is temporarily unavailable. Please try again later.")
-            : tourismOnlyReply(language), status: "redirected" };
+            : persona.id === DEFAULT_PERSONA_ID ? tourismOnlyReply(language)
+            : language === "zh" ? `我只能协助${persona.venue.zh}的参观及相关安全问题。现有资料不足以回答这个问题，请咨询场馆工作人员。`
+            : `I can help with visiting ${persona.venue.en} and related safe questions. The approved knowledge does not answer this question; please ask venue staff.`, status: "redirected" };
       }
     }
     const status = verified.status;
     const sources = status === "allowed" ? (generationUsed ? generationSources : (faq?.sources || [])) : [];
     if (!demo) {
-      await storeExchange(user, conversationId, body.message.trim(), verified.reply);
+      await storeExchange(user, conversationId, body.message.trim(), verified.reply, { id: persona.id, version: persona.version });
     } else {
       if (!demoConversations.has(conversationId) && demoConversations.size >= 100) {
         demoConversations.delete(demoConversations.keys().next().value);
       }
       demoConversations.set(conversationId, {
         updatedAt: Date.now(),
+        personaId: persona.id, personaVersion: persona.version,
         messages: [...history,
           { role: "user", content: body.message.trim() },
           { role: "assistant", content: verified.reply.slice(0, 6000) }
         ].slice(-12)
       });
     }
-    return json({ reply: verified.reply, conversationId, sources, safety: { status },
-      ...(generationUsed ? { ai: { mode: "grounded_generation" } } : providerDegraded ? { ai: { mode: "curated_faq_fallback", errorCode: providerErrorCode || "UPSTREAM_UNKNOWN" } } : {}),
+    return json({ reply: verified.reply, conversationId, sources, safety: { status }, persona: publicPersona(persona),
+      ai: { mode: personaIdentity ? "persona_identity" : generationUsed ? generationMode : providerDegraded ? "curated_faq_fallback" : "curated_faq",
+        ...(providerDegraded ? { errorCode: providerErrorCode || "UPSTREAM_UNKNOWN" } : {}) },
       ...(status === "allowed" && faq ? { faq: { id: faq.id, question: faq[language === "zh" ? "question_zh" : "question_en"], category: faq.category } } : {}) });
   } catch (error) {
     if (error instanceof PayloadError) return json({ error: error.message }, error.status);

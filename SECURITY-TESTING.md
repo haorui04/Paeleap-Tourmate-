@@ -1,10 +1,10 @@
 # Paeleap AI safety testing and release gates
 
-Review date: 21 October 2026. Scope: the China-tourism FAQ application, its API and its model-selection boundary. This is a reproducible application security assessment, not model certification or a promise that every malicious request will be detected.
+Current remediation: 23 October 2026. See [remediation results and remaining launch gates](docs/SECURITY-REMEDIATION-2026-10-23.md) and `npm run test:remediation` for the expanded 500-case retained corpus. The following original methodology remains useful, but historical metrics must not be presented as new live-model results. This is application security assessment, not model certification or universal malicious-intent detection.
 
 ## 1. Product boundary and security objective
 
-Paeleap answers from 100 curated FAQ records, each containing English and Chinese questions and default answers. The model is a selector, not an answer writer: it may return a candidate FAQ ID and confidence. The server validates the selection and retrieves the stored answer. Raw provider text, instructions, tool calls and invented answers must never become the visitor-facing answer.
+TourMate answers from 100 bilingual FAQ records; custom museum personas use isolated, versioned administrator-approved knowledge. The FAQ model selects one ID/confidence. The evidence model returns only a strict literal JSON plan selecting up to three known IDs, not answer prose. The server renders approved text with fixed persona framing and selected-only citations. Escaped/duplicate keys, unknown IDs, prose, instructions and tool calls are rejected. Knowledge import validation is a tripwire, not a replacement for curator review.
 
 The primary objective is to contain unsafe or out-of-scope requests without breaking legitimate travel assistance. A model's confidence is untrusted output, not independently measured accuracy or authorization.
 
@@ -14,7 +14,7 @@ The intended controls are:
 - Fixed tourism-only instructions. Historic turns are untrusted quoted data, not privileged assistant or developer instructions. Unsafe historical instructions are filtered, and recognizable sensitive values are redacted before provider transmission.
 - A shortlist drawn from the curated bank, strict selection grammar, confidence bounds and known-ID validation. No model-directed browsing, shell execution, SQL execution, purchases or bookings are available.
 - Authentication for production chat; conversation lookups use the user's JWT and an explicit owner predicate. Database Row Level Security (RLS) is still mandatory. Client-supplied identity or history must not override authenticated server context.
-- Privileged message writes recheck ownership immediately before using the server-only service-role credential. The check and insert are separate requests, not a transactional ownership guarantee.
+- The chat route uses a service-only transactional RPC that locks the conversation row and rechecks owner, persona ID and version before inserting both turns. Legacy adapter calls without a profile retain the earlier compatibility path; the public route never uses it.
 - Server-side quotas, bounded provider requests, conservative curated fallback and generic client errors. Logs must not contain raw prompts, upstream bodies, credentials or private records.
 - Local demo and offline mock modes are disabled in production. An unauthenticated development demo is not a multi-user privacy boundary and must not be publicly deployed.
 
