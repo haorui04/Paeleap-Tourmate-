@@ -9,6 +9,7 @@ import { generateTourismAnswer, retrieveAnswerReferences, isBroadTransportQuesti
 import { aiFailureCode } from "../../../lib/ai/diagnostics.js";
 import { reviewedPlanningRecords } from "../../../lib/tourism/evidence-fallback.js";
 import { DEFAULT_PERSONA_ID, publicPersona, resolvePersona, personaKnowledge } from "../../../lib/personas/index.js";
+import { isPersonaIdentityQuestion, personaIdentityReply } from "../../../lib/personas/identity.js";
 
 export const runtime = "nodejs";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -143,11 +144,10 @@ export async function POST(request) {
     let generationMode = null;
     let generationSources = [];
     let verified = { reply: classified.reply, status: classified.status };
-    const identityQuestion = /^(?:who are you|what is your name|你是谁|你是誰|你叫什么名字|你叫什麼名字)[?？!！。\s]*$/i.test(body.message.trim());
-    const personaIdentity = classified.status === "allowed" && persona.id !== DEFAULT_PERSONA_ID && identityQuestion;
+    const personaIdentity = classified.status === "allowed" && isPersonaIdentityQuestion(body.message);
     if (personaIdentity) {
       // Identity is public administrator data, never a visitor/model-authored role.
-      verified = { reply: persona.greeting[language], status: "allowed" };
+      verified = { reply: personaIdentityReply(persona, language), status: "allowed" };
     } else if (classified.status === "allowed") {
       const faqs = persona.id === DEFAULT_PERSONA_ID ? await getFaqBank() : persona.knowledge;
       const answerMode = process.env.AI_RESPONSE_MODE === "generated" && persona.id === DEFAULT_PERSONA_ID && !demo && !mockAiEnabled();

@@ -1,9 +1,14 @@
 # TourMate: AI-written answers from the knowledge bank
 
-`AI_RESPONSE_MODE=generated` enables a reference-grounded answer path for the
+`AI_RESPONSE_MODE=generated` enables an AI Travel Companion answer path for the
 default TourMate persona. Existing `faq` and `grounded` modes remain available.
 Custom museum profiles continue to render approved records so their previously
 tested output boundary is preserved.
+
+TourMate's fixed role is to answer visitors' questions about travelling in
+China. Identity questions such as “Who are you and what is your role?” return
+the public administrator-defined identity directly, without searching FAQs or
+calling the model. The underlying model provider does not change that persona.
 
 ## Request flow
 
@@ -16,19 +21,23 @@ tested output boundary is preserved.
 4. Send only those reference answers, the current redacted question and bounded
    untrusted history to the configured provider. No user/secret tables or server
    credentials are included in the prompt. Provider authentication stays private.
-5. Ask the model to write a concise answer using the references and cite known
-   record IDs in a strict JSON envelope. The output cap is 1536 tokens.
+5. Ask the model to write a concise answer, using relevant references when
+   available. It can use its existing knowledge for safe, stable general travel
+   guidance outside the FAQs, with an empty recordIds array. The output cap is
+   1536 tokens. FAQ retrieval does not train or fine-tune the model.
 6. Validate the envelope, record IDs, length, links, obvious unsafe/role-changing
    content, credential-like strings and unsupported numeric claims. Attach only
    the selected records' approved HTTPS sources. The UI says
    “AI-generated · knowledge references” for accepted generated text.
+   General guidance instead says “AI-generated · general travel guidance” and
+   has no fabricated reference links. Unsupported numeric claims are rejected.
 7. If the provider fails or validation rejects its output, make no second model
    request. Use exact-match or reviewed broad-transport guidance when available,
    clearly labeled as fallback. Otherwise report temporary unavailability.
 8. Save the exchange through the same authenticated, owner-checked storage path.
 
-Insufficient evidence produces a clarification rather than implying that every
-unmatched tourism question is unrelated to China. This mode does not add web
+Necessary missing travel details produce a clarification; an unmatched FAQ
+alone is not a reason to refuse a safe tourism question. This mode does not add web
 search, live prices, bookings, map navigation or unsupported museum knowledge.
 
 ## Configuration
@@ -38,9 +47,14 @@ redeploy. Retain `FAQ_BANK_SOURCE=supabase`, `ALLOW_LOCAL_DEMO=false` and
 `AI_MOCK_MODE=false`, plus the existing server-only provider/database settings.
 Do not change keys, provider, budgets or safety rules to disguise an outage.
 
+The current example uses `AI_BASE_URL=https://ai-gateway.vercel.sh/v1`,
+`AI_MODEL=deepseek/deepseek-v3.1`, and `AI_API_STYLE=chat_completions`. The
+protocol's OpenAI-compatible format does not mean an OpenAI model is used.
+
 `/api/status` confirms the selected mode and variable presence. It does not call
 the model. To verify inference, submit a signed-in question and inspect the
-`POST /api/chat` response: `ai.mode` must be `generated_answer`, not
+`POST /api/chat` response: `ai.mode` must be `generated_answer` or
+`generated_general`, not
 `curated_faq_fallback`, `curated_faq` or `knowledge_clarification`.
 
 Try broad transport in English and Chinese, payment questions, a request to
