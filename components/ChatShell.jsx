@@ -6,6 +6,9 @@ import useTripHistory from "./useTripHistory.js";
 import TravelScene from "./TravelScene.jsx";
 import DeleteChatDialog from "./DeleteChatDialog.jsx";
 import ThinkingIndicator from "./ThinkingIndicator.jsx";
+import AttachmentPicker from "./AttachmentPicker.jsx";
+import { attachmentPrompt, attachmentTranscript, MAX_ATTACHMENT_MESSAGE } from '../lib/attachments/shared.js';
+import { compactWeatherView } from "../lib/weather-format.js";
 import { getSupabaseBrowserClient } from "../lib/client/supabase.js";
 import { localHistoryForRequest, createRemoteTrip } from "../lib/client/trips.js";
 import { DEFAULT_PERSONA_ID, parsePublicPersona, personaIdFromSearch, provenanceLabel } from "../lib/client/personas.js";
@@ -176,13 +179,14 @@ function SafetyBadge({ status, language }) {
 function Message({ message, language, copied, onCopy, avatar }) {
   const t = text[language];
   const assistant = message.role === "assistant";
+  const weatherView = assistant ? compactWeatherView(message.content) : null;
   return (
     <article className={`message-row ${assistant ? "assistant-row" : "user-row"} ${message.fresh ? "message-fresh" : ""}`}>
       {assistant && <div className="assistant-avatar" aria-hidden="true">{avatar}</div>}
       <div className="message-column">
         {assistant && <span className="message-author">{message.persona?.name?.[language] || (language === "zh" ? "你的旅行伙伴" : "Your travel companion")}</span>}
         <div className={`message-bubble ${assistant ? "assistant-bubble" : "user-bubble"}`}>
-          <p>{message.content}</p>
+          <p>{weatherView?.text || message.content}</p>
         </div>
           <div className="message-meta">
             {message.createdAt && <time className="message-time" dateTime={message.createdAt}
@@ -198,7 +202,10 @@ function Message({ message, language, copied, onCopy, avatar }) {
               <Icon name="copy" size={14} />{copied === message.id ? t.copied : t.copy}
             </button>}
           </div>
-        {assistant && message.sources?.length > 0 && (
+        {weatherView && <details className="weather-credit"><summary>{language === "zh" ? "天气来源" : "Weather sources"}</summary>
+          {weatherView.sources.map(source => <a key={source.url} href={source.url} target="_blank" rel="noreferrer">{source.name}</a>)}
+        </details>}
+        {assistant && !weatherView && message.sources?.length > 0 && (
           <div className="sources-card">
             <p><Icon name="link" size={15} />{t.sourceTitle}</p>
             <div className="source-links">
@@ -229,6 +236,9 @@ export default function ChatShell() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteError, setDeleteError] = useState("");
   const [announcement, setAnnouncement] = useState("");
+  // Raw files are deliberately excluded from persistent trip/localStorage state.
+  const [attachmentDrafts, setAttachmentDrafts] = useState({});
+  const [attachmentBusy, setAttachmentBusy] = useState(false);
   const endRef = useRef(null);
   const textareaRef = useRef(null);
   const requestsRef = useRef(new Map());
@@ -335,8 +345,16 @@ export default function ChatShell() {
   const error = activeTrip?.error || "";
   const pending = activeTrip?.pending === true;
   const historyUnavailable = activeTrip?.loaded === false;
+  const attachment = attachmentDrafts[activeTrip?.id] || null;
+  const attachmentEnabled = persona?.id === DEFAULT_PERSONA_ID && service.data?.attachmentsConfigured === true;
+  const messageLimit = attachment ? MAX_ATTACHMENT_MESSAGE : MAX_MESSAGE_LENGTH;
 
-  useEffect(() => { setDeleteTarget(null); setDeleteError(""); setAnnouncement(""); }, [chatIdentity, personaId]);
+  useEffect(() => { setDeleteTarget(null); setDeleteError(""); setAnnouncement(""); setAttachmentDrafts({}); }, [chatIdentity, personaId]);
+  useEffect(() => { setAttachmentBusy(false); }, [activeTrip?.id,chatIdentity,personaId]);
+  useEffect(() => {
+    const ids = new Set(trips.map(trip=>trip.id));
+    setAttachmentDrafts(previous => Object.keys(previous).some(id=>!ids.has(id)) ? Object.fromEntries(Object.entries(previous).filter(([id])=>ids.has(id))) : previous);
+  },[trips]);
 
   useEffect(() => () => {
     for (const controller of requestsRef.current.values()) controller.abort();
@@ -462,9 +480,11 @@ export default function ChatShell() {
 
   async function submitMessage(event) {
     event.preventDefault();
-    const message = draft.trim();
-    if (!personaReady || !activeTrip || historyUnavailable || !message || pending || requestsRef.current.has(activeTrip.id) || message.length > MAX_MESSAGE_LENGTH) return;
+    const message = attachment ? attachmentPrompt(draft,language) : draft.trim();
+    if (!personaReady || !activeTrip || historyUnavailable || !message || pending || attachmentBusy || requestsRef.current.has(activeTrip.id) || message.length > messageLimit) return;
     const tripId = activeTrip.id;
+    const selectedFile = attachment;
+    const userContent = selectedFile ? attachmentTranscript(message,selectedFile.name,language) : message;
     let conversationId = activeTrip.conversationId;
     const previousMessages = activeTrip.messages;
 
@@ -472,7 +492,7 @@ export default function ChatShell() {
     const createdAt = new Date().toISOString();
     history.updateTrip(tripId, (trip) => ({ ...trip, draft: "", error: "", pending: true,
       title: trip.title || message.slice(0, 80), updatedAt: createdAt,
-      messages: [...trip.messages, { id: makeMessageId("user"), role: "user", content: message, createdAt }] }));
+      messages: [...trip.messages, { id: makeMessageId("user"), role: "user", content: userContent, createdAt }] }));
 
     const controller = new AbortController();
     requestsRef.current.set(tripId, controller);
@@ -501,14 +521,20 @@ export default function ChatShell() {
             title: message, personaId, personaVersion: persona.version });
         }
       }
-      const headers = { "Content-Type": "application/json" };
+      const headers = selectedFile ? {} : { "Content-Type": "application/json" };
       if (token) headers.Authorization = `Bearer ${token}`;
+      const fields = buildChatBody({message,conversationId,language,personaId});
+      let requestBody;
+      if (selectedFile) {
+        requestBody = new FormData();
+        for (const [key,value] of Object.entries(fields)) if(value != null) requestBody.set(key,String(value));
+        requestBody.set('file',selectedFile);
+      } else requestBody = JSON.stringify({...fields,...(demoMode ? {history:localHistoryForRequest(previousMessages)} : {})});
       controller.signal.throwIfAborted();
       const response = await fetch("/api/chat", {
         method: "POST",
         headers,
-        body: JSON.stringify({ ...buildChatBody({ message, conversationId, language, personaId }),
-          ...(demoMode ? { history: localHistoryForRequest(previousMessages) } : {}) }),
+        body: requestBody,
         signal: controller.signal
       });
       const payload = await response.json().catch(() => ({}));
@@ -521,6 +547,7 @@ export default function ChatShell() {
       const parsed = parseChatResponse(payload);
       if (parsed.persona && parsed.persona.id !== personaId) throw new Error("Mismatched assistant reply");
       if (requestsRef.current.get(tripId) !== controller) return;
+      if (selectedFile) setAttachmentDrafts(previous => {const next={...previous}; delete next[tripId]; return next;});
       const repliedAt = new Date().toISOString();
       history.updateTrip(tripId, (trip) => ({ ...trip, conversationId: parsed.conversationId,
         updatedAt: repliedAt, messages: [...trip.messages, {
@@ -537,6 +564,7 @@ export default function ChatShell() {
       }] }));
     } catch (requestError) {
       if (requestsRef.current.get(tripId) !== controller) return;
+      if (selectedFile) history.updateTrip(tripId, {draft});
       const status = timedOut ? 504 : requestError.status;
       if (requestError.name === "AbortError" && !timedOut) {
         history.updateTrip(tripId, { error: language === "zh" ? "已停止生成回复。" : "Response stopped." });
@@ -708,18 +736,23 @@ export default function ChatShell() {
               )}
               <form className="composer" onSubmit={submitMessage}>
                 <label className="sr-only" htmlFor="chat-message">{language === "zh" ? `询问${personaName}` : `Ask ${personaName}`}</label>
-                <textarea id="chat-message" ref={textareaRef} rows="1" maxLength={MAX_MESSAGE_LENGTH}
+                <textarea id="chat-message" ref={textareaRef} rows="1" maxLength={messageLimit}
                   placeholder={persona?.id === DEFAULT_PERSONA_ID ? t.placeholder : language === "zh" ? `向${personaName}询问场馆相关问题…` : `Ask ${personaName} about this venue…`} value={draft} onChange={(event) => setDraft(event.target.value)}
-                  onInput={resizeTextarea} onKeyDown={onComposerKeyDown} disabled={!personaReady || pending || historyUnavailable} />
+                  onInput={resizeTextarea} onKeyDown={onComposerKeyDown} disabled={!personaReady || pending || historyUnavailable || attachmentBusy} />
                 <div className="composer-bottom">
-                  <span className={`character-count ${draft.length > 1350 ? "near-limit" : ""}`}>{draft.length}/{MAX_MESSAGE_LENGTH}</span>
+                  {attachmentEnabled && <AttachmentPicker key={`${chatIdentity}-${personaId}-${activeTrip?.id}`} file={attachment} language={language}
+                    disabled={pending || attachmentBusy || historyUnavailable} onBusy={setAttachmentBusy} onError={setError}
+                    onChange={file=>{if(file && draft.length>MAX_ATTACHMENT_MESSAGE){setError(language==='zh'?'附带文件时，请将问题缩短至 1,300 字符。':'Shorten your question to 1,300 characters when attaching a file.');return;} setAttachmentDrafts(previous=>({...previous,[activeTrip.id]:file}));}}/>}
+                  <span className={`character-count ${draft.length > messageLimit-150 ? "near-limit" : ""}`}>{draft.length}/{messageLimit}</span>
                   {pending ? (
                     <button className="send-button stop-button" type="button" onClick={stopResponse} aria-label={t.stop}><Icon name="stop" size={18} /></button>
                   ) : (
-                    <button className="send-button" type="submit" disabled={!personaReady || !draft.trim() || historyUnavailable} aria-label={t.send}><Icon name="send" size={18} /></button>
+                    <button className="send-button" type="submit" disabled={!personaReady || (!draft.trim() && !attachment) || historyUnavailable || attachmentBusy} aria-label={t.send}><Icon name="send" size={18} /></button>
                   )}
                 </div>
               </form>
+              {attachmentBusy && <p className="attachment-help" role="status">{language==='zh'?'正在准备附件…':'Preparing attachment…'}</p>}
+              {attachmentEnabled && <p className="attachment-help">{language==='zh'?'单个文件 · 2 MB · PDF 最多 12 页。由 AI 处理，请勿上传证件或秘密信息。聊天记录不保存原始附件；再次提问细节时请重新上传。':'One file · 2 MB · PDF up to 12 pages. Processed by AI; do not upload IDs or secrets. Original files are not saved in chat history; reattach to ask about details later.'}</p>}
               <p className="composer-note"><span>{t.enterHint}</span><span>{t.disclaimer}</span></p>
             </div>
           </div>

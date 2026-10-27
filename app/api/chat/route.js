@@ -11,6 +11,10 @@ import { reviewedPlanningRecords } from "../../../lib/tourism/evidence-fallback.
 import { DEFAULT_PERSONA_ID, publicPersona, resolvePersona, personaKnowledge } from "../../../lib/personas/index.js";
 import { isPersonaIdentityQuestion, personaIdentityReply } from "../../../lib/personas/identity.js";
 import { isWeatherRequest, isWeatherFollowup, getWeatherReply } from "../../../lib/weather.js";
+import { readAttachmentRequest } from "../../../lib/attachments/request.js";
+import { AttachmentError, prepareAttachment } from "../../../lib/attachments/files.js";
+import { answerAttachment, privateImageRequest, attachmentRefusal } from "../../../lib/attachments/analyze.js";
+import { attachmentPrompt, attachmentTranscript, MAX_ATTACHMENT_MESSAGE } from "../../../lib/attachments/shared.js";
 
 export const runtime = "nodejs";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -80,13 +84,22 @@ function localHistory(value) {
 
 export async function POST(request) {
   try {
-    const bodyText = await boundedBodyText(request);
-    let body;
-    try { body = JSON.parse(bodyText); } catch { return json({ error: "Malformed JSON" }, 400); }
+    let body; let file = null;
+    if (/^multipart\/form-data/i.test(request.headers.get('content-type') || '')) {
+      ({body,file} = await readAttachmentRequest(request));
+    } else {
+      const bodyText = await boundedBodyText(request);
+      try { body = JSON.parse(bodyText); } catch { return json({ error: "Malformed JSON" }, 400); }
+    }
     if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "Invalid payload" }, 400);
+    if ('attachment' in body || 'file' in body) return json({error:'Attachments require multipart upload'},400);
 
     const language = body.language === "zh" ? "zh" : body.language === "en" || body.language == null ? "en" : null;
     if (!language) return json({ error: "Language must be en or zh" }, 400);
+    if (file) {
+      if (body.message != null && (typeof body.message !== 'string' || body.message.length > MAX_ATTACHMENT_MESSAGE)) return json({error:'Attachment message is too long'},400);
+      body.message = attachmentPrompt(body.message, language);
+    }
     const personaId = body.personaId ?? DEFAULT_PERSONA_ID;
     if (typeof personaId !== "string" || !/^[a-z][a-z0-9-]{1,63}$/.test(personaId)) {
       return json({ error: "Invalid personaId" }, 400);
@@ -145,14 +158,22 @@ export async function POST(request) {
     let generationMode = null;
     let generationSources = [];
     let verified = { reply: classified.reply, status: classified.status };
-    const personaIdentity = classified.status === "allowed" && isPersonaIdentityQuestion(body.message);
-    if (personaIdentity) {
+    const personaIdentity = !file && classified.status === "allowed" && isPersonaIdentityQuestion(body.message);
+    if (file && classified.status === 'allowed') {
+      // Parse only after Auth, quota, conversation ownership and persona checks.
+      // Files are per-request evidence; raw bytes/OCR are never stored in chats.
+      const attached = persona.id !== DEFAULT_PERSONA_ID ? {reply:language === 'zh' ? '当前场馆导览未启用附件。请使用场馆已批准的资料提问。' : 'Attachments are not enabled for this venue guide. Please ask about its approved visitor information.',status:'allowed',mode:'attachment_unavailable',sources:[]}
+        : privateImageRequest(body.message) ? attachmentRefusal(language)
+        : await answerAttachment({attachment:await prepareAttachment(file),message:body.message,language});
+      verified = {reply:attached.reply,status:attached.status};
+      generationUsed = true; generationMode = attached.mode; generationSources = attached.sources;
+    } else if (personaIdentity) {
       // Identity is public administrator data, never a visitor/model-authored role.
       verified = { reply: personaIdentityReply(persona, language), status: "allowed" };
     } else if (classified.status === "allowed" && (isWeatherRequest(body.message) || isWeatherFollowup(body.message, history))) {
       // The tool runs only after Auth, quota, ownership and input/persona checks.
       // Museum profiles cannot use global city weather to escape venue scope.
-      const weather = persona.id === DEFAULT_PERSONA_ID ? await getWeatherReply({ message: body.message, language })
+      const weather = persona.id === DEFAULT_PERSONA_ID ? await getWeatherReply({ message: body.message, history, language })
         : { reply: language === "zh" ? "当前场馆导览未开放实时天气查询，请查看当地官方天气服务。" : "Live weather lookup is not enabled for this venue guide. Please check the local official weather service.",
           status: "allowed", sources: [], mode: "weather_unavailable" };
       verified = { reply: weather.reply, status: weather.status };
@@ -224,9 +245,10 @@ export async function POST(request) {
       }
     }
     const status = verified.status;
+    const userContent = file ? attachmentTranscript(body.message, file.name, language) : body.message.trim();
     const sources = status === "allowed" ? (generationUsed ? generationSources : (faq?.sources || [])) : [];
     if (!demo) {
-      await storeExchange(user, conversationId, body.message.trim(), verified.reply, { id: persona.id, version: persona.version });
+      await storeExchange(user, conversationId, userContent, verified.reply, { id: persona.id, version: persona.version });
     } else {
       if (!demoConversations.has(conversationId) && demoConversations.size >= 100) {
         demoConversations.delete(demoConversations.keys().next().value);
@@ -235,7 +257,7 @@ export async function POST(request) {
         updatedAt: Date.now(),
         personaId: persona.id, personaVersion: persona.version,
         messages: [...history,
-          { role: "user", content: body.message.trim() },
+          { role: "user", content: userContent },
           { role: "assistant", content: verified.reply.slice(0, 6000) }
         ].slice(-12)
       });
@@ -246,6 +268,7 @@ export async function POST(request) {
       ...(status === "allowed" && faq ? { faq: { id: faq.id, question: faq[language === "zh" ? "question_zh" : "question_en"], category: faq.category } } : {}) });
   } catch (error) {
     if (error instanceof PayloadError) return json({ error: error.message }, error.status);
+    if (error instanceof AttachmentError) return json({ error: 'Use one valid JPG, PNG, WebP, PDF (up to 12 pages), DOCX, TXT or Markdown file. Maximum 2 MB; text documents up to 12,000 characters. Encrypted or complex files are not supported.' }, error.status);
     // Never return raw upstream response bodies, database errors, or credentials to clients.
     const message = error instanceof Error ? error.message : "";
     const kind = /not configured/.test(message) ? "configuration"

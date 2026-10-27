@@ -5,6 +5,7 @@ import { getWeatherReply, parseWeatherRequest, isWeatherRequest, isWeatherFollow
 import { POST } from "../app/api/chat/route.js";
 import { parseChatResponse } from "../lib/client/chat.js";
 import { provenanceLabel } from "../lib/client/personas.js";
+import { compactWeatherView, WEATHER_CREDIT } from '../lib/weather-format.js';
 import { readFile } from "node:fs/promises";
 const venue = JSON.parse(await readFile(new URL("../examples/personas/little-de-rabbit.json", import.meta.url), "utf8"));
 
@@ -43,6 +44,12 @@ for (const [message, city, period] of [
   ["北京现在的天气怎么样？", "北京", "current"],
   ["请问上海明天的天气", "上海", "tomorrow"],
   ["Weather in Beijing tomorrow", "Beijing", "tomorrow"],
+  ["What is the weather in Shanghai tommorow?", "Shanghai", "tomorrow"],
+  ["What will the weather be like in Shanghai tomorrow?", "Shanghai", "tomorrow"],
+  ["Weather in Shanghai for tomorrow", "Shanghai", "tomorrow"],
+  ["Weather in Shanghai for the next few days", "Shanghai", "three_days"],
+  ["Shanghai weather over the next several days", "Shanghai", "three_days"],
+  ["上海未来几天的天气", "上海", "three_days"],
   ["Forecast for Beijing", "Beijing", "three_days"],
   ["Weather in Beijing the day after tomorrow", "Beijing", "day_after_tomorrow"],
   ["Today's weather in Beijing", "Beijing", "current"],
@@ -60,13 +67,15 @@ test("seasonal climate advice remains on the ordinary tourism path", () => {
     assert.equal(isWeatherRequest(question), false);
 });
 
-test("a bare weather follow-up requests explicit city details without using model inference", async () => {
+test("a bare weather follow-up reuses only a credited server weather city", async () => {
   const prior = await requestWeather(service());
   assert.equal(isWeatherFollowup("What about tomorrow?", [{ role: "assistant", content: prior.reply }]), true);
   assert.equal(isWeatherFollowup("What about tomorrow?", [{ role: "assistant", content: "West Lake is a cultural landscape." }]), false);
   let calls = 0;
   const result = await requestWeather({ message: "What about tomorrow?", fetchImpl: async () => { calls++; } });
   assert.equal(result.mode, "weather_clarification"); assert.equal(calls, 0);
+  const next = await requestWeather({...service(),message:'What about tomorrow?',history:[{role:'assistant',content:prior.reply}]});
+  assert.equal(next.mode,'weather_forecast'); assert.match(next.reply,/11–21 °C/);
 });
 
 test("weather needs a city and does not pretend unsupported dates are current", () => {
@@ -79,8 +88,12 @@ test("weather needs a city and does not pretend unsupported dates are current", 
 test("validated current weather has numeric units, time, attribution and no LLM text", async () => {
   const s = service(); const result = await requestWeather(s);
   assert.equal(result.mode, "weather_current"); assert.equal(result.status, "allowed");
-  assert.match(result.reply, /18.5 °C/); assert.match(result.reply, /60%/); assert.match(result.reply, /12.1 km\/h/);
-  assert.match(result.reply, /UTC\+8/); assert.match(result.reply, /model estimates/); assert.match(result.reply, /CC BY 4.0/);
+  assert.match(result.reply, /18.5 °C/); assert.match(result.reply, /60%/);
+  assert.match(result.reply, /China time/); assert.match(result.reply, /CC BY 4.0/);
+  const visible = compactWeatherView(result.reply);
+  assert.deepEqual(visible.text.split('\n').map(line=>line.split(': ')[0]),['Place','Weather','Temperature','Humidity','Time']);
+  assert.doesNotMatch(visible.text,/wind|rain chance|retrieved|feels|model estimates|https?:/i);
+  assert.ok(result.reply.endsWith(WEATHER_CREDIT)); assert.equal(visible.sources.length,3);
   assert.equal(s.calls.length, 2); assert.equal(s.calls[0].url.searchParams.get("name"), "Beijing");
   assert.equal(s.calls[0].url.searchParams.get("countryCode"), "CN");
   assert.equal(s.calls[1].url.searchParams.get("latitude"), "39.9");
@@ -90,7 +103,7 @@ test("validated current weather has numeric units, time, attribution and no LLM 
 test("tomorrow's forecast is labeled and uses tomorrow rather than current temperature", async () => {
   const result = await requestWeather({ ...service(), message: "Weather in Beijing tomorrow" });
   assert.equal(result.mode, "weather_forecast"); assert.match(result.reply, /2026-10-28/);
-  assert.match(result.reply, /11–21 °C/); assert.match(result.reply, /20%/);
+  assert.match(result.reply, /11–21 °C/); assert.doesNotMatch(compactWeatherView(result.reply).text, /20%|Humidity/);
   assert.doesNotMatch(result.reply, /18.5 °C/);
 });
 

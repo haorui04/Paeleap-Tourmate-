@@ -10,7 +10,7 @@ async function visit(dir) {
     if (["node_modules", ".next", ".git", ".paeleap", "reports"].includes(entry.name)) continue;
     const path = resolve(dir, entry.name);
     if (entry.isDirectory()) await visit(path);
-    else if (/\.(?:js|mjs)$/.test(entry.name)) files.push(path);
+    else if (/\.(?:js|mjs|cjs)$/.test(entry.name)) files.push(path);
   }
 }
 await visit(root);

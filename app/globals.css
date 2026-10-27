@@ -280,3 +280,28 @@
     *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
   }
 }
+/* Compact, credited weather and ephemeral travel attachments. */
+.weather-credit { margin: 10px 0 0; color: var(--muted); font-size: .75rem; }
+.weather-credit summary { cursor: pointer; width: fit-content; }
+.weather-credit a { display: inline-block; margin: 8px 12px 0 0; text-decoration: underline; }
+.attachment-picker { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+.attach-button { display: inline-flex; align-items: center; gap: 5px; padding: 7px 9px; border: 0; background: transparent; border-radius: 8px; color: #2869b8; font-size: .76rem; flex-shrink: 0; }
+.attach-button:hover { background: #eef6ff; }
+.attach-button:disabled { opacity: .5; cursor: wait; }
+.attachment-chip { display: flex; align-items: center; gap: 7px; border: 1px solid #d7e6fa; border-radius: 9px; padding: 4px 7px; background: #f4f8ff; min-width: 0; max-width: 270px; }
+.attachment-chip img { object-fit: cover; border-radius: 5px; flex-shrink: 0; }
+.attachment-chip > span { font-size: .73rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.attachment-chip small { display: block; color: #637895; font-size: .63rem; }
+.attachment-chip button { padding: 3px 5px; font-size: 1.1rem; border: 0; background: transparent; color: #42668b; }
+.composer:has(.attachment-chip) { flex-wrap: wrap; }
+.composer:has(.attachment-chip) textarea { flex: 1 0 100%; }
+.composer:has(.attachment-chip) .composer-bottom { flex-basis: 100%; width: 100%; }
+.attachment-help { color: #62758f; font-size: .66rem; line-height: 1.5; margin: 7px 3px 0; }
+.composer-bottom .character-count { margin-left: auto; flex-shrink: 0; }
+@media (max-width: 480px) {
+  .attachment-picker { gap: 4px; }
+  .attach-button { padding: 6px 3px; font-size: 0; }
+  .attachment-chip { max-width: 145px; }
+  .attachment-chip img { width: 26px; height: 26px; }
+  .composer-bottom { gap: 7px; }
+}

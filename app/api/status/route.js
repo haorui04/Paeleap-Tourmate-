@@ -15,6 +15,7 @@ export async function GET() {
     service: "paeleap-tourism-ai",
     status: process.env.NODE_ENV === "production" && !ready ? "unconfigured" : "ok",
     aiConfigured: [process.env.AI_BASE_URL, resolveAiApiKey(), process.env.AI_MODEL].every(hasConfiguredValue),
+    attachmentsConfigured: [process.env.AI_BASE_URL, resolveAiApiKey(), process.env.AI_MODEL, process.env.AI_VISION_MODEL].every(hasConfiguredValue),
     supabaseConfigured: [process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY, process.env.SUPABASE_SERVICE_ROLE_KEY].every(hasConfiguredValue),
     localDemoMode: localDemo,
     aiMockMode: mockAiEnabled(),

@@ -6,6 +6,11 @@ const projectRoot = fileURLToPath(new URL(".", import.meta.url));
 export default {
   turbopack: { root: projectRoot },
   outputFileTracingRoot: projectRoot,
+  // The bounded document parser is a real Node worker, outside the route bundle.
+  outputFileTracingIncludes: {
+    '/api/chat': ['./lib/attachments/document-worker.cjs', './node_modules/pdf-lib/**/*',
+      './node_modules/@pdf-lib/**/*', './node_modules/pako/**/*', './node_modules/tslib/**/*', './node_modules/fflate/**/*']
+  },
   devIndicators: false,
   async headers() {
     return [{ source: "/:path*", headers: [

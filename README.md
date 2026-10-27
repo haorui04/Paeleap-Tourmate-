@@ -10,6 +10,8 @@ A bilingual Next.js application with a responsive chat interface, a local SQLite
 
 The white-and-blue travel interface includes reduced-motion-aware response animations and confirmed chat deletion. Deleting a saved trip removes its conversation/messages from Supabase and clears the browser copy. See [UI and deletion behavior](docs/UI-AND-CHAT-DELETION.md).
 
+TourMate also supports [travel image and document attachments](docs/TRAVEL-ATTACHMENTS.md): images, PDFs, DOCX, TXT and Markdown. Image/PDF perception uses a separately configured vision model; DeepSeek remains the main answer model. Files are request-only references and do not train or change the persona.
+
 ## Local setup
 
 Requires Node.js 22.13 or newer, including built-in `node:sqlite` support.
@@ -49,7 +51,7 @@ For semantic AI matching, configure the server-only provider key, exact `AI_MODE
 
 ## Database setup
 
-**Live weather:** TourMate supports current conditions and a three-day city forecast through a validated backend lookup. Try `What is the weather in Beijing now?` or `杭州现在的天气`. Authentication, quotas and input/persona checks apply before the tool runs. Weather responses include data time and attribution; outages never fall back to invented model weather. See [configuration, security and commercial-use requirements](docs/LIVE-WEATHER.md).
+**Live weather:** TourMate supports compact current conditions (place, weather, temperature, humidity and query time) and a three-day city forecast starting today. Try `What is the weather in Shanghai tommorow?`, `Shanghai weather over the next few days` or `上海明天的天气`. Authentication, quotas and input/persona checks apply before lookup. Source credit stays in a collapsible reference area; outages never fall back to invented model weather. See [configuration, security and commercial-use requirements](docs/LIVE-WEATHER.md).
 
 There was no clearly identified Supabase project for this application on 2026-10-15. **No live schema has been applied.**
 
