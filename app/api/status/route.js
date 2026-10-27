@@ -6,7 +6,7 @@ export async function GET() {
   const localDemo = localDemoEnabled();
   // Expose active mode without revealing provider credentials.
   // This confirms configuration, NOT that a live provider inference succeeds.
-  const aiResponseMode = process.env.AI_RESPONSE_MODE === "grounded" && !localDemo ? "grounded" : "faq";
+  const aiResponseMode = ["grounded", "generated"].includes(process.env.AI_RESPONSE_MODE) && !localDemo ? process.env.AI_RESPONSE_MODE : "faq";
   const ready = [process.env.AI_BASE_URL, resolveAiApiKey(), process.env.AI_MODEL,
     process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY, process.env.SUPABASE_SERVICE_ROLE_KEY,
     process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY].every(hasConfiguredValue) &&

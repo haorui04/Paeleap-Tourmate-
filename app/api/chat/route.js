@@ -5,6 +5,7 @@ import { tourismOnlyReply, matchFaqOffline } from "../../../lib/tourism/faq-matc
 import { authenticate, ensureConversation, getRecentMessages, storeExchange, consumeQuota } from "../../../lib/db/supabase.js";
 import { localDemoEnabled, mockAiEnabled } from "../../../lib/config.js";
 import { generateGroundedReply, renderEvidenceReply } from "../../../lib/ai/generate.js";
+import { generateTourismAnswer, retrieveAnswerReferences, isBroadTransportQuestion } from "../../../lib/ai/answer.js";
 import { aiFailureCode } from "../../../lib/ai/diagnostics.js";
 import { reviewedPlanningRecords } from "../../../lib/tourism/evidence-fallback.js";
 import { DEFAULT_PERSONA_ID, publicPersona, resolvePersona, personaKnowledge } from "../../../lib/personas/index.js";
@@ -149,7 +150,8 @@ export async function POST(request) {
       verified = { reply: persona.greeting[language], status: "allowed" };
     } else if (classified.status === "allowed") {
       const faqs = persona.id === DEFAULT_PERSONA_ID ? await getFaqBank() : persona.knowledge;
-      const planningRecords = persona.id === DEFAULT_PERSONA_ID ? reviewedPlanningRecords(body.message, faqs) : [];
+      const answerMode = process.env.AI_RESPONSE_MODE === "generated" && persona.id === DEFAULT_PERSONA_ID && !demo && !mockAiEnabled();
+      const planningRecords = persona.id === DEFAULT_PERSONA_ID && !answerMode ? reviewedPlanningRecords(body.message, faqs) : [];
       if (planningRecords.length) {
         verified = { reply: renderEvidenceReply(planningRecords, language, persona), status: "allowed" };
         generationUsed = true;
@@ -157,9 +159,9 @@ export async function POST(request) {
         generationSources = [...new Map(planningRecords.flatMap(record => record.sources || []).map(source => [source.url, source])).values()];
       }
       const groundedMode = (process.env.AI_RESPONSE_MODE === "grounded" || persona.id !== DEFAULT_PERSONA_ID) && !demo && !mockAiEnabled();
-      if (groundedMode && !generationUsed) {
+      if ((groundedMode || answerMode) && !generationUsed) {
         try {
-          const generated = await generateGroundedReply({ message: body.message.trim(), language, history, faqs, persona });
+          const generated = await (answerMode ? generateTourismAnswer : generateGroundedReply)({ message: body.message.trim(), language, history, faqs, persona });
           verified = { reply: generated.reply, status: generated.status };
           generationSources = generated.sources;
           generationUsed = true;
@@ -171,6 +173,20 @@ export async function POST(request) {
           console.warn("AI generation degraded; using curated FAQ fallback", {
             kind: /AI provider returned HTTP/.test(error?.message || "") ? "upstream_http" : "upstream_format_or_network"
           });
+        }
+      }
+      if (answerMode && providerDegraded) {
+        // Useful transport guidance can survive an upstream outage. This remains
+        // explicitly labeled as fallback, never as successful AI generation.
+        const records = retrieveAnswerReferences(body.message.trim(), faqs, sanitizeFaqHistory(history));
+        const exact = matchFaqOffline(body.message.trim(), faqs, sanitizeFaqHistory(history));
+        const fallback = exact ? [faqs.find(record => record.id === exact.faqId)] : isBroadTransportQuestion(body.message) ? records.slice(0, 3) : [];
+        if (fallback.length) {
+          const notice = language === "zh" ? "AI生成服务暂时不可用，以下是知识库中的参考信息：" : "AI generation is temporarily unavailable. Here is guidance from the knowledge bank:";
+          verified = { reply: notice + "\n\n" + renderEvidenceReply(fallback, language), status: "allowed" };
+          generationSources = [...new Map(fallback.flatMap(record => record.sources || []).map(source => [source.url, source])).values()];
+          generationUsed = true;
+          generationMode = "curated_faq_fallback";
         }
       }
       if (!generationUsed) {

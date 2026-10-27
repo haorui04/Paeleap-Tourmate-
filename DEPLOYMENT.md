@@ -1,13 +1,13 @@
 # Paeleap TourMate deployment gates
 
-This repository ships restricted bilingual museum/tourism companions, not a general-purpose agent. TourMate uses the original 100 FAQs; administrator-published profiles use their own knowledge. AI selects/composes approved records, never arbitrary prose. Do not claim live prices, bookings, timetables, routing or medically validated advice. [Current museum deployment steps](docs/MUSEUM-DEPLOYMENT.md) supersede the historical provider notes below.
+This repository ships restricted bilingual museum/tourism companions, not a general-purpose agent. TourMate can select approved records or, with `AI_RESPONSE_MODE=generated`, write responses using the 100 FAQs as references. Administrator-published museum profiles retain approved-record rendering. Review [generated-answer setup and limits](docs/GENERATED-ANSWERS.md) before enabling that mode. Do not claim live prices, bookings, timetables, routing or medically validated advice. [Current museum deployment steps](docs/MUSEUM-DEPLOYMENT.md) supersede the historical provider notes below.
 
 Apply the **new** `personas-schema.sql`, `conversation-personas.sql` and `quota-hardening.sql` migrations before deploying this version, after validating them in staging. Configure server-only `PERSONA_ADMIN_USER_IDS`; then use `/admin` to upload reviewed JSON packages. Empty allowlist disables publication. This is deployment-wide administration, not organization-specific RBAC. Little De Rabbit is demonstration content, not an official De Shou service.
 
 ## Before deploying (required)
 
 1. Use a dedicated Supabase project. Apply `supabase/schema.sql` and `supabase/faq-schema.sql` and then `supabase/faq-seed.sql`. Audit the RLS and function permissions in the deployed database.
-2. Configure server-only provider credentials, exact model ID and explicit API protocol. Responses requests use `/v1/responses`, `input`, `stream:false`, `store:false`, and an output-token cap (384 for FAQ selection, 512 for evidence composition). Chat Completions/Anthropic requests use their own endpoint and `max_tokens`. Caps are never silently removed for compatibility. Verify provider support, Chinese replies, errors and a signed-in end-to-end request in staging; fixtures do not prove live availability.
+2. Configure server-only provider credentials, exact model ID and explicit API protocol. Responses requests use `/v1/responses`, `input`, `stream:false`, `store:false`, and an output-token cap (384 for FAQ selection, 512 for evidence composition, 1536 for generated answers). Chat Completions/Anthropic requests use their own endpoint and `max_tokens`. Caps are never silently removed for compatibility. Verify provider support, Chinese replies, errors and a signed-in end-to-end request in staging; fixtures do not prove live availability.
 3. Set `FAQ_BANK_SOURCE=supabase`; Vercel serverless functions must **not** use mutable local SQLite state. The API rejects SQLite configuration in production.
 4. Configure `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY` server-side; configure `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for the browser **from the same project**. Never use a service-role/secret key under `NEXT_PUBLIC_`.
 5. Set `ALLOW_LOCAL_DEMO=false`, `AI_MOCK_MODE=false`. These modes are also disabled automatically in production.
@@ -44,7 +44,7 @@ proof of an AI-generated answer. Check the status on a fresh request:
 - 401 / 403: verify the encrypted provider key and Responses entitlement.
 - 404: verify the correct inference endpoint and model.
 - 429: provider rate limit or quota.
-Do not disable safety filtering or turn on arbitrary generative answers
-to hide upstream failures. The current system selects FAQ IDs, not free-text
-responses; a separate approved RAG implementation is required for open-ended
-grounded answers.
+Do not disable safety filtering or turn on arbitrary generative answers to hide
+upstream failures. The historical FAQ path selects IDs. The newer opt-in
+`generated` mode is a separate reference-grounded answer path; it still requires
+successful provider access and keeps failures visibly labeled as fallback.

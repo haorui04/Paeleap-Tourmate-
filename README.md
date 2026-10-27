@@ -43,7 +43,7 @@ curl -s -X POST http://localhost:3000/api/chat \
   -d '{"message":"How do I book a train ticket in China?","language":"en"}'
 ```
 
-For semantic AI matching, configure the server-only provider key, exact `AI_MODEL`, `AI_BASE_URL` ending in `/v1`, and explicit `AI_API_STYLE=responses|chat_completions|anthropic`. The adapter appends the protocol's inference path. Set `AI_MOCK_MODE=false`. `AI_RESPONSE_MODE=faq` preserves single-FAQ selection for TourMate; `grounded` and custom museum profiles use bounded AI evidence composition: the model selects up to three known records and the server renders their approved text. Arbitrary model-authored prose is rejected. Citations come only from the selected records, not every retrieval candidate. Provider output is capped; a gateway rejecting those caps fails to curated fallback rather than silently removing the protection.
+For semantic AI matching, configure the server-only provider key, exact `AI_MODEL`, `AI_BASE_URL` ending in `/v1`, and explicit `AI_API_STYLE=responses|chat_completions|anthropic`. The adapter appends the protocol's inference path. Set `AI_MOCK_MODE=false`. `AI_RESPONSE_MODE=faq` preserves single-FAQ selection; `grounded` and custom museum profiles select and render approved records. **For AI-written TourMate responses, set `AI_RESPONSE_MODE=generated`**, which lets the model paraphrase and combine retrieved reference answers. See [generated-answer setup and limits](docs/GENERATED-ANSWERS.md). Links come only from cited records, and provider output stays capped. Fallback answers and clarification messages have separate provenance labels; a successful HTTP response or `/api/status` alone does not prove successful inference.
 
 ## Database setup
 
