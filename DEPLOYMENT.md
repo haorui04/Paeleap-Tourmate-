@@ -6,6 +6,8 @@ Apply the **new** `personas-schema.sql`, `conversation-personas.sql` and `quota-
 
 ## Before deploying (required)
 
+For the live city-weather tool, review [LIVE-WEATHER.md](docs/LIVE-WEATHER.md). The default free Open-Meteo configuration is for non-commercial use; commercial launch requires its commercial plan and server-only key. Verify an authenticated live lookup, saved timestamps, provider failure behavior and provider-wide traffic limits. No weather schema migration is required.
+
 1. Use a dedicated Supabase project. Apply `supabase/schema.sql` and `supabase/faq-schema.sql` and then `supabase/faq-seed.sql`. Audit the RLS and function permissions in the deployed database.
 2. Configure server-only provider credentials, exact model ID and explicit API protocol. Responses requests use `/v1/responses`, `input`, `stream:false`, `store:false`, and an output-token cap (384 for FAQ selection, 512 for evidence composition, 1536 for generated answers). Chat Completions/Anthropic requests use their own endpoint and `max_tokens`. Caps are never silently removed for compatibility. Verify provider support, Chinese replies, errors and a signed-in end-to-end request in staging; fixtures do not prove live availability.
 3. Set `FAQ_BANK_SOURCE=supabase`; Vercel serverless functions must **not** use mutable local SQLite state. The API rejects SQLite configuration in production.

@@ -18,7 +18,7 @@ import { performance } from "node:perf_hooks";
 import { REDTEAM_CASES, allEvaluationCases } from "../tests/fixtures/redteam-cases.mjs";
 
 const keys = ["NODE_ENV","ALLOW_LOCAL_DEMO","AI_MOCK_MODE","AI_BASE_URL","AI_API_KEY","AI_MODEL","AI_RESPONSE_MODE","AI_API_STYLE","SUB2API_API_KEY","PERSONA_LOAD_EXAMPLES","PERSONA_ADMIN_USER_IDS",
-  "SUPABASE_URL","SUPABASE_PUBLISHABLE_KEY","SUPABASE_SERVICE_ROLE_KEY","FAQ_BANK_SOURCE","PRIVATE_CANARY"];
+  "SUPABASE_URL","SUPABASE_PUBLISHABLE_KEY","SUPABASE_SERVICE_ROLE_KEY","FAQ_BANK_SOURCE","PRIVATE_CANARY","WEATHER_ENABLED","WEATHER_API_PLAN"];
 const conversationId = "550e8400-e29b-41d4-a716-446655440000";
 const canaries = ["SYNTHETIC_SERVER_CANARY_7F2391", "synthetic-server-service-credential-7F2391", "synthetic-provider-credential-7F2391", "PRIVATE_OTHER_USER_CANARY_41", "UNTRUSTED_PROVIDER_FREE_TEXT_7F2391"];
 const sha = value => createHash("sha256").update(value).digest("hex");
@@ -40,11 +40,11 @@ export async function runEvaluation({ sourceRoot = resolve(dirname(fileURLToPath
     AI_BASE_URL:"https://provider.redteam.invalid/v1", AI_API_KEY:canaries[2], AI_MODEL:"synthetic-selector-no-real-model",
     SUPABASE_URL:"https://database.redteam.invalid", SUPABASE_PUBLISHABLE_KEY:"synthetic-public-key-7F2391",
     SUPABASE_SERVICE_ROLE_KEY:canaries[1], FAQ_BANK_SOURCE:"local", PRIVATE_CANARY:canaries[0],
-    AI_RESPONSE_MODE:"faq",AI_API_STYLE:"responses",SUB2API_API_KEY:"replace_me",PERSONA_LOAD_EXAMPLES:"false",PERSONA_ADMIN_USER_IDS:"" };
+    AI_RESPONSE_MODE:"faq",AI_API_STYLE:"responses",SUB2API_API_KEY:"replace_me",PERSONA_LOAD_EXAMPLES:"false",PERSONA_ADMIN_USER_IDS:"",WEATHER_ENABLED:"true",WEATHER_API_PLAN:"noncommercial" };
   Object.assign(process.env,settings);
   process.chdir(sourceRoot);
   try {
-    const trackedFiles = ["app/api/chat/route.js","lib/config.js","lib/ai/safety.js","lib/ai/input-normalization.js","lib/ai/provider.js","lib/ai/generate.js","lib/ai/prompts.js","lib/personas/index.js","lib/personas/validation.js","lib/tourism/faq-matching.js","lib/db/faq.js","lib/db/supabase.js","data/china-tourism-faq.js"];
+    const trackedFiles = ["app/api/chat/route.js","lib/config.js","lib/weather.js","lib/ai/safety.js","lib/ai/input-normalization.js","lib/ai/provider.js","lib/ai/generate.js","lib/ai/prompts.js","lib/personas/index.js","lib/personas/validation.js","lib/tourism/faq-matching.js","lib/db/faq.js","lib/db/supabase.js","data/china-tourism-faq.js"];
     const fingerprintSources = async () => {
       const values = {};
       for (const path of trackedFiles) {
@@ -70,6 +70,11 @@ export async function runEvaluation({ sourceRoot = resolve(dirname(fileURLToPath
         const body = init.body ? JSON.parse(init.body) : null;
         const headers = new Headers(init.headers);
         calls.push({ hostname:url.hostname, pathname:url.pathname, search:url.search, method });
+        // This corpus's only direct weather query is out-of-region London.
+        // A synthetic empty China-filtered geocoder result preserves that test
+        // without permitting real outbound calls or weakening expected labels.
+        if (url.hostname === "geocoding-api.open-meteo.com" && url.pathname === "/v1/search" &&
+            url.searchParams.get("countryCode") === "CN" && url.searchParams.get("name") === "London") return Response.json({});
         if (url.hostname === "database.redteam.invalid") {
           if (url.pathname === "/auth/v1/user") {
             if (headers.get("Authorization") !== "Bearer synthetic-test-user-token") throw new Error("Fixture rejected unexpected auth token");
@@ -164,7 +169,7 @@ export async function runEvaluation({ sourceRoot = resolve(dirname(fileURLToPath
       git_revision:versions(sourceRoot),source_root:sourceRoot,source_sha256:sourceShaBefore,source_sha256_after:sourceShaAfter,
       source_unchanged_during_run:sourceStable,corpus_sha256:sha(JSON.stringify(cases)),
       corpus_supplemental_sha256:sha(JSON.stringify(REDTEAM_CASES)),faq_bank_sha256:sha(JSON.stringify(bank)),
-      runtime:process.version,platform:process.platform,mode,network_policy:"No external calls: fetch rejects every host except explicit synthetic .invalid fixtures",
+      runtime:process.version,platform:process.platform,mode,network_policy:"No external calls: synthetic .invalid service fixtures and an empty China-filtered London geocoder fixture only; all other destinations rejected",
       database:"real local SQLite, seed-synchronized; Supabase operations simulated",real_llm_calls:0,
       limitations:["Purposive regression/adversarial corpus, not representative random sample or independent holdout.",
         "Provider-adversarial mode simulates a compromised valid-ID selector, not a real model attack response.",

@@ -10,6 +10,7 @@ import { aiFailureCode } from "../../../lib/ai/diagnostics.js";
 import { reviewedPlanningRecords } from "../../../lib/tourism/evidence-fallback.js";
 import { DEFAULT_PERSONA_ID, publicPersona, resolvePersona, personaKnowledge } from "../../../lib/personas/index.js";
 import { isPersonaIdentityQuestion, personaIdentityReply } from "../../../lib/personas/identity.js";
+import { isWeatherRequest, isWeatherFollowup, getWeatherReply } from "../../../lib/weather.js";
 
 export const runtime = "nodejs";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -148,6 +149,14 @@ export async function POST(request) {
     if (personaIdentity) {
       // Identity is public administrator data, never a visitor/model-authored role.
       verified = { reply: personaIdentityReply(persona, language), status: "allowed" };
+    } else if (classified.status === "allowed" && (isWeatherRequest(body.message) || isWeatherFollowup(body.message, history))) {
+      // The tool runs only after Auth, quota, ownership and input/persona checks.
+      // Museum profiles cannot use global city weather to escape venue scope.
+      const weather = persona.id === DEFAULT_PERSONA_ID ? await getWeatherReply({ message: body.message, language })
+        : { reply: language === "zh" ? "当前场馆导览未开放实时天气查询，请查看当地官方天气服务。" : "Live weather lookup is not enabled for this venue guide. Please check the local official weather service.",
+          status: "allowed", sources: [], mode: "weather_unavailable" };
+      verified = { reply: weather.reply, status: weather.status };
+      generationUsed = true; generationMode = weather.mode; generationSources = weather.sources;
     } else if (classified.status === "allowed") {
       const faqs = persona.id === DEFAULT_PERSONA_ID ? await getFaqBank() : persona.knowledge;
       const answerMode = process.env.AI_RESPONSE_MODE === "generated" && persona.id === DEFAULT_PERSONA_ID && !demo && !mockAiEnabled();

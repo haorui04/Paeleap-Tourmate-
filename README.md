@@ -47,6 +47,8 @@ For semantic AI matching, configure the server-only provider key, exact `AI_MODE
 
 ## Database setup
 
+**Live weather:** TourMate supports current conditions and a three-day city forecast through a validated backend lookup. Try `What is the weather in Beijing now?` or `杭州现在的天气`. Authentication, quotas and input/persona checks apply before the tool runs. Weather responses include data time and attribution; outages never fall back to invented model weather. See [configuration, security and commercial-use requirements](docs/LIVE-WEATHER.md).
+
 There was no clearly identified Supabase project for this application on 2026-10-15. **No live schema has been applied.**
 
 1. Create a dedicated Supabase project for this chatbot.
@@ -140,7 +142,7 @@ Trip-history tests also cover migration, keeping more than forty messages, resto
 
 ## Known limits and Day 2 handoff
 
-- The 100-question bank is general guidance, not live policy, prices, availability, weather, route or booking data. Questions outside it are redirected, even if they involve tourism.
+- The 100-question bank is general guidance, not live policy, prices, availability, routing or booking data. Generated mode can provide safe general travel answers outside the bank. Only the dedicated weather tool supplies live weather; the language model must not invent current conditions.
 - SQLite needs a writable persistent project directory. Use the Supabase FAQ option for deployments with ephemeral/read-only disks; never silently fall back when the selected database fails.
 - Prompt-injection and harmful-content checks are baseline heuristics, **not** a comprehensive safety guarantee.
 - Output validation is intentionally conservative; some useful timetable-like suggestions may be replaced with a verification warning.
