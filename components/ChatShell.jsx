@@ -3,8 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import AuthPanel from "./AuthPanel.jsx";
 import useTripHistory from "./useTripHistory.js";
+import TravelScene from "./TravelScene.jsx";
+import DeleteChatDialog from "./DeleteChatDialog.jsx";
+import ThinkingIndicator from "./ThinkingIndicator.jsx";
 import { getSupabaseBrowserClient } from "../lib/client/supabase.js";
-import { localHistoryForRequest } from "../lib/client/trips.js";
+import { localHistoryForRequest, createRemoteTrip } from "../lib/client/trips.js";
 import { DEFAULT_PERSONA_ID, parsePublicPersona, personaIdFromSearch, provenanceLabel } from "../lib/client/personas.js";
 import {
   MAX_MESSAGE_LENGTH,
@@ -29,20 +32,27 @@ const text = {
     syncError: "Saved trips couldn't be synced. Your local chats are still available.",
     storageError: "This browser couldn't save your history. Chats will remain available while this page is open.",
     emptyTrip: "Your first plan starts here",
-    trustTitle: "Designed for safer travel",
-    trustBody: "Administrator-selected knowledge with server-side scope and safety checks.",
+    trustTitle: "A companion you can count on",
+    trustBody: "Thoughtful guidance. Clear references. A little more confidence on your journey.",
     disclaimer: "AI can make mistakes. Confirm live hours, prices and transport with official providers.",
     signOut: "Sign out",
     localDemo: "Offline FAQ mode",
     localAi: "Local AI",
-    privateSession: "Private session",
+    privateSession: "Your personal travel space",
     unavailable: "Status unavailable",
     connectionTitle: "Let's reconnect",
     connectionBody: "TourMate couldn't reach the chat service. Check your connection and try again.",
     retry: "Try again",
-    welcomeKicker: "YOUR CHINA TRAVEL COMPANION",
-    welcomeTitle: "Where should we explore?",
-    welcomeBody: "Explore 100 travel FAQs covering arrivals, payments, transport, food and sightseeing in China. Answers come from our question bank, not live booking data.",
+    welcomeKicker: "MADE FOR YOUR NEXT CHAPTER",
+    welcomeTitle: "A little guidance.",
+    welcomeAccent: "A world to explore.",
+    welcomeBody: "Your AI companion for travelling in China. Find your way, discover somewhere new, and make every journey feel a little easier.",
+    starterTitle: "A good place to start",
+    starterHint: "Choose an idea, or ask your own question below.",
+    deleteChat: "Delete conversation",
+    deleteWait: "Wait for this response to finish before deleting",
+    deleteError: "We couldn't delete this conversation. Your history is still saved. Check your connection and try again.",
+    deleted: "Conversation deleted",
     composerLabel: "Ask TourMate",
     placeholder: "Ask about travel in China…",
     send: "Send message",
@@ -62,7 +72,8 @@ const text = {
     suggestions: [
       { title: "Getting around", body: "Book a train with your passport", prompt: "How do I book a train ticket in China?" },
       { title: "Pay with confidence", body: "Learn about visitor payments", prompt: "Can foreign tourists use Alipay?" },
-      { title: "Explore West Lake", body: "Learn what makes it significant", prompt: "What is West Lake and why is it culturally significant?" }
+      { title: "Discover somewhere new", body: "Explore the story of West Lake", prompt: "What is West Lake and why is it culturally significant?" },
+      { title: "Check the forecast", body: "Current city weather, before you go", prompt: "What is the weather in Beijing now?" }
     ]
   },
   zh: {
@@ -78,20 +89,27 @@ const text = {
     syncError: "无法同步已保存行程，本地对话仍可使用。",
     storageError: "浏览器无法保存历史记录。当前页面保持打开时仍可查看对话。",
     emptyTrip: "从这里开始你的第一个计划",
-    trustTitle: "为安心旅行而设计",
-    trustBody: "使用管理员配置的知识资料，并执行服务端范围和安全检查。",
+    trustTitle: "安心出行，一路相伴",
+    trustBody: "用心的建议、清晰的参考，让每一步旅程多一份从容。",
     disclaimer: "AI 可能出错。实时开放时间、票价和交通信息请以官方渠道为准。",
     signOut: "退出登录",
     localDemo: "离线问答模式",
     localAi: "本地 AI",
-    privateSession: "私密会话",
+    privateSession: "你的专属旅行空间",
     unavailable: "状态不可用",
     connectionTitle: "请重新连接",
     connectionBody: "无法连接到聊天服务，请检查网络后重试。",
     retry: "重试",
-    welcomeKicker: "你的中国旅行伴侣",
-    welcomeTitle: "今天想去哪里探索？",
-    welcomeBody: "100 题旅游问答涵盖入境准备、支付、交通、餐饮和景点游览。回复来自问答库，不包含实时预订数据。",
+    welcomeKicker: "下一段旅程，从这里开始",
+    welcomeTitle: "用心指引，",
+    welcomeAccent: "自在探索。",
+    welcomeBody: "你的 AI 中国旅行伙伴。轻松规划出行、发现新的风景，让每一段旅程更从容。",
+    starterTitle: "从一个好问题开始",
+    starterHint: "选一个灵感，或在下方提出你的问题。",
+    deleteChat: "删除对话",
+    deleteWait: "请等待当前回复结束后再删除",
+    deleteError: "未能删除此对话，历史记录仍已保留。请检查网络后重试。",
+    deleted: "对话已删除",
     composerLabel: "询问 TourMate",
     placeholder: "询问中国旅游相关问题…",
     send: "发送消息",
@@ -111,7 +129,8 @@ const text = {
     suggestions: [
       { title: "轻松出行", body: "了解如何使用护照购买火车票", prompt: "在中国如何预订火车票？" },
       { title: "安心支付", body: "了解游客支付方式", prompt: "外国游客可以使用支付宝吗？" },
-      { title: "探索西湖", body: "了解它的重要意义", prompt: "西湖是什么，为什么具有文化意义？" }
+      { title: "发现新的风景", body: "探索西湖的文化故事", prompt: "西湖是什么，为什么具有文化意义？" },
+      { title: "出行先看天气", body: "查看目的地的最新天气", prompt: "北京现在的天气怎么样？" }
     ]
   }
 };
@@ -128,6 +147,10 @@ function Icon({ name, size = 20 }) {
   if (name === "spark") return <svg {...common}><path d="m12 3 1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3Z" /><path d="m19 15 .7 2.3L22 18l-2.3.7L19 21l-.7-2.3L16 18l2.3-.7L19 15Z" /></svg>;
   if (name === "stop") return <svg {...common}><rect x="6" y="6" width="12" height="12" rx="2" /></svg>;
   if (name === "logout") return <svg {...common}><path d="M10 17l5-5-5-5M15 12H3" /><path d="M15 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4" /></svg>;
+  if (name === "trash") return <svg {...common}><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" /></svg>;
+  if (name === "compass") return <svg {...common}><circle cx="12" cy="12" r="9"/><path d="m16 8-2.5 5.5L8 16l2.5-5.5L16 8Z"/></svg>;
+  if (name === "cloud") return <svg {...common}><path d="M7 18h10a4 4 0 0 0 .8-7.9A6 6 0 0 0 6.2 9a4.5 4.5 0 0 0 .8 9Z"/></svg>;
+  if (name === "train") return <svg {...common}><rect x="5" y="3" width="14" height="16" rx="4"/><path d="M5 10h14M9 3v7M8 22l2-3M16 22l-2-3M8 15h1M15 15h1"/></svg>;
   return null;
 }
 
@@ -154,9 +177,10 @@ function Message({ message, language, copied, onCopy, avatar }) {
   const t = text[language];
   const assistant = message.role === "assistant";
   return (
-    <article className={`message-row ${assistant ? "assistant-row" : "user-row"}`}>
+    <article className={`message-row ${assistant ? "assistant-row" : "user-row"} ${message.fresh ? "message-fresh" : ""}`}>
       {assistant && <div className="assistant-avatar" aria-hidden="true">{avatar}</div>}
       <div className="message-column">
+        {assistant && <span className="message-author">{message.persona?.name?.[language] || (language === "zh" ? "你的旅行伙伴" : "Your travel companion")}</span>}
         <div className={`message-bubble ${assistant ? "assistant-bubble" : "user-bubble"}`}>
           <p>{message.content}</p>
         </div>
@@ -202,6 +226,9 @@ export default function ChatShell() {
   const [session, setSession] = useState(null);
   const [copied, setCopied] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteError, setDeleteError] = useState("");
+  const [announcement, setAnnouncement] = useState("");
   const endRef = useRef(null);
   const textareaRef = useRef(null);
   const requestsRef = useRef(new Map());
@@ -309,6 +336,8 @@ export default function ChatShell() {
   const pending = activeTrip?.pending === true;
   const historyUnavailable = activeTrip?.loaded === false;
 
+  useEffect(() => { setDeleteTarget(null); setDeleteError(""); setAnnouncement(""); }, [chatIdentity, personaId]);
+
   useEffect(() => () => {
     for (const controller of requestsRef.current.values()) controller.abort();
     requestsRef.current.clear();
@@ -341,7 +370,7 @@ export default function ChatShell() {
   }, [activeTrip?.id]);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    endRef.current?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "end" });
   }, [messages, pending, activeTrip?.id]);
 
   function setDraft(value) { if (activeTrip) history.updateTrip(activeTrip.id, { draft: value }); }
@@ -372,6 +401,22 @@ export default function ChatShell() {
     history.selectTrip(id);
     setSidebarOpen(false);
     requestAnimationFrame(() => textareaRef.current?.focus());
+  }
+
+  function closeDeleteDialog() {
+    if (history.deletingTripId) return;
+    setDeleteTarget(null); setDeleteError("");
+    requestAnimationFrame(() => textareaRef.current?.focus());
+  }
+
+  async function confirmDelete() {
+    setDeleteError("");
+    try {
+      if (await history.deleteTrip(deleteTarget)) {
+        setDeleteTarget(null); setAnnouncement(t.deleted);
+        requestAnimationFrame(() => textareaRef.current?.focus());
+      }
+    } catch { setDeleteError(t.deleteError); }
   }
 
   async function signOut() {
@@ -420,7 +465,7 @@ export default function ChatShell() {
     const message = draft.trim();
     if (!personaReady || !activeTrip || historyUnavailable || !message || pending || requestsRef.current.has(activeTrip.id) || message.length > MAX_MESSAGE_LENGTH) return;
     const tripId = activeTrip.id;
-    const conversationId = activeTrip.conversationId;
+    let conversationId = activeTrip.conversationId;
     const previousMessages = activeTrip.messages;
 
     resetComposerHeight();
@@ -446,6 +491,14 @@ export default function ChatShell() {
           const sessionError = new Error("Missing session");
           sessionError.status = 401;
           throw sessionError;
+        }
+        if (!conversationId) {
+          // Reserve the conversation before inference, so even a stopped
+          // response has a known database ID that the visitor can delete.
+          conversationId = crypto.randomUUID();
+          history.updateTrip(tripId, { conversationId });
+          await createRemoteTrip(authClient, { id: conversationId, userId: data.session.user.id,
+            title: message, personaId, personaVersion: persona.version });
         }
       }
       const headers = { "Content-Type": "application/json" };
@@ -479,7 +532,8 @@ export default function ChatShell() {
         ...(parsed.ai ? { ai: parsed.ai } : {}),
         ...(parsed.persona ? { persona: parsed.persona } : {}),
         ...(parsed.faq ? { faq: parsed.faq } : {}),
-        createdAt: repliedAt
+        createdAt: repliedAt,
+        fresh: true
       }] }));
     } catch (requestError) {
       if (requestsRef.current.get(tripId) !== controller) return;
@@ -516,7 +570,9 @@ export default function ChatShell() {
   ];
 
   return (
-    <div className="app-shell grid min-h-dvh grid-cols-[288px_minmax(0,1fr)] max-[900px]:grid-cols-[235px_minmax(0,1fr)] max-[720px]:block">
+    <div className="app-shell">
+      <span className="sr-only" role="status">{announcement}</span>
+      <DeleteChatDialog trip={deleteTarget} busy={Boolean(history.deletingTripId)} error={deleteError} language={language} onCancel={closeDeleteDialog} onConfirm={confirmDelete}/>
       {sidebarOpen && <button className="sidebar-backdrop" type="button" aria-label={t.closeTrips} onClick={() => { setSidebarOpen(false); historyButtonRef.current?.focus(); }} />}
       <aside id="trips-sidebar" ref={sidebarRef} className={`sidebar ${sidebarOpen ? "is-open" : ""}`} aria-label={t.tripNavigation}>
         <div className="sidebar-brand-row">
@@ -533,10 +589,9 @@ export default function ChatShell() {
         <nav className="trip-list" aria-label={t.tripNavigation}>
           <p className="sidebar-label">{t.recent}</p>
           <div className="trip-scroll">
-          {trips.map((trip) => <button key={trip.id} type="button" data-trip-id={trip.id}
-            className={`trip-item ${activeTrip?.id === trip.id ? "active" : ""}`}
-            aria-pressed={activeTrip?.id === trip.id} onClick={() => selectTrip(trip.id)}>
-            <span className="trip-icon" aria-hidden="true"><Icon name="spark" size={17} /></span>
+          {trips.map((trip) => <div key={trip.id} className={`trip-item ${activeTrip?.id === trip.id ? "active" : ""}`}>
+            <button type="button" data-trip-id={trip.id} className="trip-select" aria-pressed={activeTrip?.id === trip.id} onClick={() => selectTrip(trip.id)}>
+            <span className="trip-icon" aria-hidden="true"><Icon name="compass" size={18} /></span>
             <span className="trip-description">
               <strong>{trip.title || t.untitledTrip}</strong>
               <small>
@@ -544,7 +599,11 @@ export default function ChatShell() {
                 {trip.pending && <span className="trip-pending" aria-label={t.thinking}> ···</span>}
               </small>
             </span>
-          </button>)}
+            </button>
+            <button type="button" className="trip-delete" aria-label={`${t.deleteChat}: ${trip.title || t.untitledTrip}`}
+              title={trip.pending ? t.deleteWait : t.deleteChat} disabled={trip.pending || Boolean(history.deletingTripId)}
+              onClick={() => { setSidebarOpen(false); setDeleteError(""); setDeleteTarget(trip); }}><Icon name="trash" size={16}/></button>
+          </div>)}
           </div>
         </nav>
         <div className="sidebar-spacer" />
@@ -557,6 +616,7 @@ export default function ChatShell() {
 
       <main className="main-panel min-w-0" inert={sidebarOpen ? true : undefined}>
         <header className="topbar">
+          <div className="topbar-heading"><span>{persona?.venue[language] || (language === "zh" ? "中国旅行" : "CHINA, AT YOUR OWN PACE")}</span><strong>{activeTrip?.title || (language === "zh" ? "下一段旅程" : "Your next adventure")}</strong></div>
           <div className="mobile-brand"><Brand name={personaName} avatar={avatar} /></div>
           <button className="mobile-history" ref={historyButtonRef} type="button" aria-label={t.openTrips}
             aria-expanded={sidebarOpen} aria-controls="trips-sidebar" onClick={() => setSidebarOpen(true)}><Icon name="menu" size={19} /></button>
@@ -607,14 +667,20 @@ export default function ChatShell() {
                 </div>
               ) : messages.length === 0 ? (
                 <div className="welcome-panel">
-                  <div className="welcome-seal" aria-hidden="true"><span>{avatar}</span></div>
-                  <p className="section-kicker">{persona?.venue[language] || t.welcomeKicker}</p>
-                  <h1>{personaName}</h1>
-                  <p className="welcome-copy">{persona?.greeting[language] || t.welcomeBody}</p>
-                  <div className="suggestion-grid grid grid-cols-3 gap-3 text-left max-[900px]:grid-cols-1">
+                  <div className="welcome-hero">
+                    <div className="welcome-heading">
+                      <p className="section-kicker"><span className="kicker-dot"/>{persona?.id === DEFAULT_PERSONA_ID ? t.welcomeKicker : persona?.venue[language]}</p>
+                      <h1>{persona?.id === DEFAULT_PERSONA_ID ? <>{t.welcomeTitle}<br/><span>{t.welcomeAccent}</span></> : personaName}</h1>
+                      <p className="welcome-copy">{persona?.id === DEFAULT_PERSONA_ID ? t.welcomeBody : persona?.greeting[language]}</p>
+                      <span className="hero-caption"><Icon name="compass" size={15}/>{language === "zh" ? "少一点犹豫，多一点发现" : "Less wondering. More discovering."}</span>
+                    </div>
+                    <TravelScene/>
+                  </div>
+                  <div className="starter-heading"><h2>{t.starterTitle}</h2><p>{t.starterHint}</p></div>
+                  <div className="suggestion-grid">
                     {suggestions.map((suggestion, index) => (
                       <button key={suggestion.title} type="button" className="suggestion-card" onClick={() => chooseSuggestion(suggestion.prompt)}>
-                        <span className="suggestion-number">0{index + 1}</span>
+                        <span className="suggestion-icon"><Icon name={["train", "shield", "compass", "cloud"][index]} size={21}/></span>
                         <strong>{suggestion.title}</strong>
                         <span>{suggestion.body}</span>
                         <i aria-hidden="true">→</i>
@@ -625,12 +691,7 @@ export default function ChatShell() {
               ) : (
                 <div className="message-list" aria-live="polite">
                   {messages.map((message) => <Message key={message.id} message={message} language={language} copied={copied} onCopy={copyMessage} avatar={avatar} />)}
-                  {pending && (
-                    <div className="message-row assistant-row" role="status">
-                      <div className="assistant-avatar" aria-hidden="true">{avatar}</div>
-                      <div className="typing-bubble"><span /><span /><span /><em>{t.thinking}</em></div>
-                    </div>
-                  )}
+                  {pending && <ThinkingIndicator key={activeTrip.id} language={language} avatar={avatar}/>}
                   <div ref={endRef} />
                 </div>
               )}

@@ -8,6 +8,8 @@
 
 A bilingual Next.js application with a responsive chat interface, a local SQLite FAQ database for development (required Supabase FAQ storage in production), AI question selection, deterministic safety checks, persistent trip history, Supabase authentication, and a per-minute quota.
 
+The white-and-blue travel interface includes reduced-motion-aware response animations and confirmed chat deletion. Deleting a saved trip removes its conversation/messages from Supabase and clears the browser copy. See [UI and deletion behavior](docs/UI-AND-CHAT-DELETION.md).
+
 ## Local setup
 
 Requires Node.js 22.13 or newer, including built-in `node:sqlite` support.

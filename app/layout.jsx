@@ -2,14 +2,14 @@ import "./globals.css";
 
 export const metadata = {
   title: "Paeleap TourMate",
-  description: "A bilingual, safety-aware AI tour companion for exploring Hangzhou",
+  description: "Your bilingual AI travel companion for exploring China, with thoughtful guidance, cultural discoveries and live city weather.",
   applicationName: "Paeleap TourMate"
 };
 
 export const viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#123f3c"
+  themeColor: "#2563eb"
 };
 
 export default function RootLayout({ children }) {

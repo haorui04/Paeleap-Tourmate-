@@ -308,4 +308,20 @@ test("embedded PostgreSQL migration, privilege, RLS, publication, exchange and q
       }
     });
   });
+
+  await t.test("owner-filtered server deletion cascades messages and cannot erase a different visitor's chat", async () => {
+    const id = "20000000-0000-4000-8000-000000000099";
+    await asRole("authenticated", USERS.a, () => query("insert into public.conversations(id,user_id,title) values ($1,$2,'Delete me')", [id, USERS.a]));
+    assert.equal(await store({ conversationId: id, personaId: "tourmate", version: 1 }), true);
+    assert.equal(await messageCount(id), 2);
+    const otherBefore = await messageCount(CONVERSATIONS.b);
+    await asRole("authenticated", USERS.a, () => denied(() => query("delete from public.conversations where id=$1", [id])));
+    const foreign = await service(() => query("delete from public.conversations where id=$1 and user_id=$2 returning id", [id, USERS.b]));
+    assert.equal(foreign.rows.length, 0); assert.equal(await messageCount(id), 2);
+    const removed = await service(() => query("delete from public.conversations where id=$1 and user_id=$2 returning id", [id, USERS.a]));
+    assert.equal(removed.rows.length, 1); assert.equal(await messageCount(id), 0);
+    assert.equal(await messageCount(CONVERSATIONS.b), otherBefore);
+    assert.equal(await store({ conversationId: id, personaId: "tourmate", version: 1 }), false);
+    assert.equal(await messageCount(id), 0, "A late generated exchange cannot recreate a deleted chat");
+  });
 });

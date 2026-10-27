@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import TravelScene from "./TravelScene.jsx";
 
 const copy = {
   en: {
@@ -74,7 +75,14 @@ export default function AuthPanel({ language, client, administrator = false }) {
   }
 
   return (
-    <section className="auth-wrap" aria-labelledby="auth-title">
+    <section className={`auth-wrap ${administrator ? "" : "auth-landing"}`} aria-labelledby="auth-title">
+      {!administrator && <div className="auth-promo">
+        <p className="section-kicker">{language === "zh" ? "下一段旅程，从这里开始" : "EVERY GREAT JOURNEY STARTS SOMEWHERE"}</p>
+        <h2>{language === "zh" ? <>心有所向，<br/><span>行有所伴。</span></> : <>Go somewhere new.<br/><span>Feel right at home.</span></>}</h2>
+        <p>{language === "zh" ? "从第一段车程到下一处风景，让你的 AI 中国旅行伙伴陪你从容探索。" : "From your first train ride to your next favourite place. Your AI companion makes exploring China feel a little more familiar."}</p>
+        <TravelScene/>
+        <span className="auth-promo-footnote">{language === "zh" ? "旅行建议 · 文化探索 · 实时天气" : "Travel guidance · Cultural discoveries · Live weather"}</span>
+      </div>}
       <div className="auth-card">
         <div className="auth-mark" aria-hidden="true">旅</div>
         <p className="section-kicker">{administrator ? (language === "zh" ? "管理员工作台" : "ADMINISTRATOR WORKSPACE") : t.eyebrow}</p>
