@@ -24,6 +24,8 @@ test('known duration options survive model refusal and provider failure without 
  }
 });
 test('itinerary missing details prompts clarification instead of a scope refusal',async()=>{
+ const failure=await generateTourismAnswer({message:'Please make an itinerary for me.',env,faqs:bank,fetchImpl:async()=>{throw Error('provider unavailable');}});
+ assert.equal(failure.status,'allowed');assert.match(failure.reply,/Which city/);
  const r=await generateTourismAnswer({message:'Please make an itinerary for me.',env,faqs:bank,fetchImpl:async()=>Response.json({choices:[{message:{content:'{"decision":"redirect","reply":"","recordIds":[]}'}}]})});
  assert.equal(r.status,'allowed');assert.match(r.reply,/Which cities/);
 });
