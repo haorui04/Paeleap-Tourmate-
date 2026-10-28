@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { DESHOU_PERSONA, DESHOU_RESEARCH } from "../data/personas/deshou-palace.js";
 import { validatePersonaPackage, personaKnowledge } from "../lib/personas/validation.js";
-import { generateMuseumAnswer, museumMessages } from "../lib/ai/museum.js";
+import { generateMuseumAnswer, museumMessages, validateMuseumDetails } from "../lib/ai/museum.js";
 import { parseGeneratedAnswer } from "../lib/ai/answer.js";
 import { personaIdentityReply } from "../lib/personas/identity.js";
 import { parseChatResponse } from "../lib/client/chat.js";
@@ -86,6 +86,16 @@ test("unknown object can ask for the label without inventing evidence", async ()
   const result = await generateMuseumAnswer({ message: "What is this unnamed museum artifact?", persona, env,
     fetchImpl: model(JSON.stringify({ decision: "clarify", reply: "", recordIds: [] })) });
   assert.equal(result.mode, "museum_clarification"); assert.match(result.reply, /label text/); assert.deepEqual(result.sources, []);
+});
+test("a general vessel type cannot supply undocumented physical details for a particular artifact", async () => {
+  const record = persona.knowledge.find(row => row.id === "DS009");
+  assert.throws(() => validateMuseumDetails("这件花觚有细长颈、鼓腹和高圈足。", [record]), /Unsupported museum/);
+  assert.throws(() => validateMuseumDetails("The gu has a tall ring foot.", [record]), /Unsupported museum/);
+  assert.doesNotThrow(() => validateMuseumDetails("Its flared shape recalls ancient bronze forms.", [record]));
+  const result = await generateMuseumAnswer({ message: record.question_en, persona, env,
+    fetchImpl: model(envelope("The gu has a tall ring foot and a bulbous body.", ["DS009"])) });
+  assert.equal(result.mode, "museum_fallback");
+  assert.doesNotMatch(result.reply, /tall ring foot|bulbous body/);
 });
 test("authenticated museum API uses the published profile, generates and persists pinned identity", async t => {
   const overrides = { ...env, NODE_ENV: "test", AI_RESPONSE_MODE: "generated", SUPABASE_URL: "https://database.invalid", SUPABASE_PUBLISHABLE_KEY: "FAKE-PUBLIC", SUPABASE_SERVICE_ROLE_KEY: "FAKE-SERVICE", ALLOW_LOCAL_DEMO: "false", AI_MOCK_MODE: "false" };
