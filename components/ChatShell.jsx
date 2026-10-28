@@ -532,9 +532,11 @@ export default function ChatShell() {
           // Reserve the conversation before inference, so even a stopped
           // response has a known database ID that the visitor can delete.
           conversationId = crypto.randomUUID();
-          history.updateTrip(tripId, { conversationId });
           await createRemoteTrip(authClient, { id: conversationId, userId: data.session.user.id,
             title: message, personaId, personaVersion: persona.version });
+          // Persist a server ID only after the database confirms its creation.
+          // A failed reservation must not poison this trip's next request.
+          history.updateTrip(tripId, { conversationId });
         }
       }
       const headers = selectedFile ? {} : { "Content-Type": "application/json" };
@@ -585,7 +587,7 @@ export default function ChatShell() {
       if (requestError.name === "AbortError" && !timedOut) {
         history.updateTrip(tripId, { error: language === "zh" ? "已停止生成回复。" : "Response stopped." });
       } else {
-        history.updateTrip(tripId, { error: chatErrorMessage(status, language, requestError.serverMessage) });
+        history.updateTrip(tripId, { error: chatErrorMessage(status, language, requestError.serverMessage, requestError.code) });
       }
       if (status === 401 && authClient) await authClient.auth.signOut();
       if (status === 404) history.updateTrip(tripId, { conversationId: null });

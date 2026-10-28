@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { DEFAULT_PERSONA_ID, ENTRY_PERSONA_ID, MAX_PERSONA_FILE_BYTES, personaIdFromSearch, parsePublicPersona,
   provenanceLabel, readPersonaPackage } from "../lib/client/personas.js";
 import { buildChatBody, parseChatResponse } from "../lib/client/chat.js";
-import { createTrip, tripStorageKey, restoreTripCollection, serializeTripCollection, mergeRemoteTrips, fetchRemoteTrips } from "../lib/client/trips.js";
+import { createTrip, tripStorageKey, restoreTripCollection, serializeTripCollection, mergeRemoteTrips, fetchRemoteTrips, createRemoteTrip } from "../lib/client/trips.js";
 
 const conversationId = "550e8400-e29b-41d4-a716-446655440000";
 const persona = { id: "deshou-rabbit", version: 1, name: { en: "Little De Rabbit", zh: "小德兔" },
@@ -22,13 +22,30 @@ test("public profile links select only a valid slug and never silently fall back
 test("public profile parser admits only bounded bilingual display metadata, not internal role or knowledge", () => {
   const result = parsePublicPersona({ ...persona, role: { en: "Private role", zh: "内部角色" }, knowledge: [{ secret: "private" }] });
   assert.equal(result.name.zh, "小德兔");
-  assert.equal(result.version, "1");
+  assert.equal(result.version, 1);
   assert.equal(result.role, undefined);
   assert.equal(result.knowledge, undefined);
   for (const invalid of [{ ...persona, id: "../secret" }, { ...persona, greeting: { en: "Hello" } },
     { ...persona, name: { en: "A".repeat(101), zh: "名字" } }, { ...persona, version: null }]) {
     assert.throws(() => parsePublicPersona(invalid));
   }
+});
+
+test("a public or restored persona can reserve a new chat using the same integer version contract", async () => {
+  for (const version of [1, "1", 2, "2", 2147483647]) {
+    const profile = parsePublicPersona({ ...persona, version });
+    let inserted;
+    const client = { from(table) {
+      assert.equal(table, "conversations");
+      return { insert(row) { inserted = row; return { async abortSignal() { return { error: null }; } }; } };
+    } };
+    await createRemoteTrip(client, { id: conversationId, userId: "11111111-1111-4111-8111-111111111111",
+      title: "Who are you?", personaId: profile.id, personaVersion: profile.version });
+    assert.equal(inserted.persona_version, Number(version));
+    assert.equal(typeof inserted.persona_version, "number");
+  }
+  for (const version of [0, -1, 1.5, "", " 1", "01", "1e2", "1.5", "version-1", 2147483648, Infinity, true])
+    assert.throws(() => parsePublicPersona({ ...persona, version }));
 });
 
 test("chat requests explicitly carry the selected profile and do not accept malformed IDs", () => {

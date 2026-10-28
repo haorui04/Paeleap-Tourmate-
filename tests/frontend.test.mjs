@@ -37,3 +37,14 @@ test("documented HTTP errors have usable English and Chinese messages", () => {
     assert.match(chatErrorMessage(status, "zh"), /[\u3400-\u9fff]/);
   }
 });
+
+test("client contract failures are distinguished from a network failure", () => {
+  let failure;
+  try { parseChatResponse({ reply: "Hello" }); } catch (error) { failure = error; }
+  assert.equal(failure.code, "invalid_response");
+  assert.match(chatErrorMessage(undefined, "en", "", failure.code), /unreadable chat response/);
+  assert.doesNotMatch(chatErrorMessage(undefined, "en", "", "conversation_create"), /Check your connection/);
+  assert.match(chatErrorMessage(401, "en", "", "conversation_create"), /session has expired/);
+  assert.match(chatErrorMessage(undefined, "zh", "", "conversation_create"), /创建/);
+  assert.match(chatErrorMessage(undefined, "en"), /Check your connection/);
+});
