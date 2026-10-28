@@ -41,6 +41,17 @@ test("a request for more detail retains the previous safe artifact context", () 
 test("Chinese detail follow-ups retain museum context", () => {
   assert.equal(museumMessages({ message: "请详细讲讲它的用途", persona, history: [{ role: "user", content: "南宋官窑青釉花觚是什么？" }] }).inScope, true);
 });
+test("a valid unnecessary clarification gets one bounded correction for an already identified object", async () => {
+  let calls = 0;
+  const result = await generateMuseumAnswer({ message: "请详细讲讲它的器形和用途", language: "zh", persona, env,
+    history: [{ role: "user", content: "南宋官窑青釉花觚是什么？" }], fetchImpl: async (_url, init) => {
+      calls++;
+      if (calls === 2) assert.match(init.body, /server_followup_reminder/);
+      return model(calls === 1 ? JSON.stringify({ decision: "clarify", reply: "", recordIds: [] })
+        : envelope("这件花觚的喇叭状外形借鉴古代青铜觚。现有资料未提供更细致的器形信息，请结合现场展签确认。", ["DS009"]))();
+    } });
+  assert.equal(calls, 2); assert.equal(result.mode, "museum_generated"); assert.match(result.reply, /花觚/);
+});
 test("DeepSeek-protocol response is explanatory prose with only supplied citations", async () => {
   const result = await generateMuseumAnswer({ message: prompt, persona, env, fetchImpl: model() });
   assert.equal(result.reply, explanation); assert.equal(result.mode, "museum_generated");

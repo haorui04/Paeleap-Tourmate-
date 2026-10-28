@@ -23,6 +23,8 @@ Production reads the persona and its knowledge from Supabase `persona_packages`.
 
 General Southern Song context may explain a documented object, but must be distinguished from object-specific evidence. A suggestion for a viewing sequence is not a floor plan, accessibility route or current schedule. Unrelated travel itineraries are outside this museum role. Live weather and attachment analysis remain disabled for museum profiles; this change does not promise photographic authentication.
 
+If the model unnecessarily asks for clarification on an artifact already identified in server-owned history, one bounded correction asks it to explain the documented details and identify the missing ones. The same output validation still applies. A second clarification returns the known record with a limitation statement; a failed provider call is not retried or labeled successful generation.
+
 ## Verification and practical limits
 
 `tests/deshou-museum.test.mjs` checks the package, reference retrieval, bilingual follow-ups, model-authored explanations, identity preservation, injection refusal, fabricated citations/numbers, service degradation and API persistence. The full existing regression suite covers authentication, tenant isolation, version binding, database permissions, deletion and other features.
