@@ -1,0 +1,132 @@
+[
+  {
+    "id": "TRANS_HANGZHOU_BEIJING",
+    "cities": [
+      "hangzhou",
+      "beijing"
+    ],
+    "reviewed_on": "2026-10-28",
+    "options": [
+      [
+        "HSR (daytime G train)",
+        "高铁（日间G字头）",
+        "4.5–7 hours",
+        "4.5–7小时"
+      ],
+      [
+        "Conventional train",
+        "普速列车",
+        "16–20 hours",
+        "16–20小时"
+      ],
+      [
+        "Flight",
+        "飞机",
+        "about 2 hours",
+        "约2小时"
+      ]
+    ],
+    "url": "https://www.travelchinaguide.com/china-trains/beijing-hangzhou.htm"
+  },
+  {
+    "id": "TRANS_BEIJING_HANGZHOU",
+    "cities": [
+      "beijing",
+      "hangzhou"
+    ],
+    "reviewed_on": "2026-10-28",
+    "options": [
+      [
+        "HSR (daytime G train)",
+        "高铁（日间G字头）",
+        "4.5–7 hours",
+        "4.5–7小时"
+      ],
+      [
+        "Conventional train",
+        "普速列车",
+        "15–20 hours",
+        "15–20小时"
+      ],
+      [
+        "Flight",
+        "飞机",
+        "about 2 hours",
+        "约2小时"
+      ]
+    ],
+    "url": "https://www.travelchinaguide.com/china-trains/beijing-hangzhou.htm"
+  },
+  {
+    "id": "TRANS_BEIJING_SHANGHAI",
+    "cities": [
+      "beijing",
+      "shanghai"
+    ],
+    "reviewed_on": "2026-10-28",
+    "options": [
+      [
+        "HSR (daytime G train)",
+        "高铁（日间G字头）",
+        "4.5–8 hours",
+        "4.5–8小时"
+      ],
+      [
+        "Conventional sleeper train",
+        "普速卧铺列车",
+        "14.5–22.5 hours",
+        "14.5–22.5小时"
+      ],
+      [
+        "Overnight D train",
+        "夜间D字头列车",
+        "12–12.5 hours",
+        "12–12.5小时"
+      ],
+      [
+        "Flight",
+        "飞机",
+        "2–2.5 hours",
+        "2–2.5小时"
+      ]
+    ],
+    "url": "https://www.travelchinaguide.com/china-trains/beijing-shanghai-highspeed.htm",
+    "flight_source": "https://www.travelchinaguide.com/cityguides/beijing/train-flight-shanghai.htm"
+  },
+  {
+    "id": "TRANS_SHANGHAI_BEIJING",
+    "cities": [
+      "shanghai",
+      "beijing"
+    ],
+    "reviewed_on": "2026-10-28",
+    "options": [
+      [
+        "HSR (daytime G train)",
+        "高铁（日间G字头）",
+        "4.5–8 hours",
+        "4.5–8小时"
+      ],
+      [
+        "Conventional sleeper train",
+        "普速卧铺列车",
+        "14.5–22.5 hours",
+        "14.5–22.5小时"
+      ],
+      [
+        "Overnight D train",
+        "夜间D字头列车",
+        "12–12.5 hours",
+        "12–12.5小时"
+      ],
+      [
+        "Flight",
+        "飞机",
+        "2–2.5 hours",
+        "2–2.5小时"
+      ]
+    ],
+    "url": "https://www.travelchinaguide.com/china-trains/beijing-shanghai-highspeed.htm",
+    "flight_source": "https://www.travelchinaguide.com/cityguides/beijing/train-flight-shanghai.htm"
+  }
+]
