@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import AuthPanel from "./AuthPanel.jsx";
 import useTripHistory from "./useTripHistory.js";
 import TravelScene from "./TravelScene.jsx";
+import MuseumScene from "./MuseumScene.jsx";
 import DeleteChatDialog from "./DeleteChatDialog.jsx";
 import ThinkingIndicator from "./ThinkingIndicator.jsx";
 import AttachmentPicker from "./AttachmentPicker.jsx";
@@ -244,10 +245,25 @@ export default function ChatShell() {
   const requestsRef = useRef(new Map());
   const sidebarRef = useRef(null);
   const historyButtonRef = useRef(null);
-  const t = text[language];
   const persona = profile.data;
+  const museum = persona?.id !== DEFAULT_PERSONA_ID;
+  const t = useMemo(() => museum ? { ...text[language], ...(language === "zh" ? {
+    brandTag: "TOURMATE · 博物馆 AI 导览", newTrip: "新对话", recent: "博物馆对话", untitledTrip: "新对话",
+    tripNavigation: "已保存对话", openTrips: "打开对话列表", closeTrips: "关闭对话列表",
+    syncError: "无法同步已保存对话，本地记录仍可使用。", emptyTrip: "从一件展品开始探索",
+    trustTitle: "看见文物，读懂历史", trustBody: "清楚区分文物、遗址与复原展示，让每次探索有据可循。",
+    disclaimer: "独立 AI 导览，并非馆方官方服务。AI 可能出错；当前在展、参观安排以馆方公告为准。",
+    privateSession: "你的博物馆探索空间", thinking: "正在查阅展品与历史资料", loading: "正在准备博物馆导览…", faqLabel: "博物馆资料"
+  } : {
+    brandTag: "TOURMATE · AI MUSEUM COMPANION", newTrip: "New conversation", recent: "MUSEUM CONVERSATIONS", untitledTrip: "New conversation",
+    tripNavigation: "Saved conversations", openTrips: "Open conversations", closeTrips: "Close conversations",
+    syncError: "Saved conversations couldn't be synced. Your local chats are still available.", emptyTrip: "Begin with an artifact",
+    trustTitle: "Objects with a story", trustBody: "Clear references. Thoughtful explanations. Original remains and reconstructions, clearly distinguished.",
+    disclaimer: "Independent AI guide, not an official museum service. AI can make mistakes; confirm current displays and visiting arrangements with the museum.",
+    privateSession: "Your museum exploration space", thinking: "Exploring the museum references", loading: "Preparing your museum guide…", faqLabel: "Museum reference"
+  }) } : text[language], [language, museum]);
   const personaName = persona?.name[language] || "Paeleap";
-  const avatar = persona?.id === DEFAULT_PERSONA_ID ? "旅" : Array.from(personaName)[0];
+  const avatar = persona?.id === "little-de-rabbit" ? "兔" : persona?.id === DEFAULT_PERSONA_ID ? "旅" : Array.from(personaName)[0];
   const personaReady = profile.state === "ready";
 
   useEffect(() => {
@@ -588,7 +604,17 @@ export default function ChatShell() {
 
   const showLoading = service.state === "loading" || profile.state === "loading" || (!demoMode && !authReady) || (chatIdentity && !history.ready);
   const needsAuthentication = !demoMode && authReady && !session;
-  const suggestions = persona?.id === DEFAULT_PERSONA_ID ? t.suggestions : [
+  const suggestions = persona?.id === "little-de-rabbit" ? (language === "zh" ? [
+    { title: "认识小德兔", body: "了解你的博物馆导览伙伴", prompt: "你是谁，你的角色是什么？" },
+    { title: "看懂一件文物", body: "七根花管里藏着什么巧思？", prompt: "龙泉窑青釉六方七管占景盆是什么，有什么用途？" },
+    { title: "深入了解", body: "分清宋代原物与现代复原", prompt: "重华殿和两把龙椅是宋代原件吗？" },
+    { title: "开始参观", body: "按主题探索德寿宫", prompt: "德寿宫有哪些展区，建议怎么参观？" }
+  ] : [
+    { title: "Meet Little De Rabbit", body: "Your AI museum companion", prompt: "Who are you and what is your role?" },
+    { title: "Discover an artifact", body: "A clever seven-tube flower vessel", prompt: "What is the Longquan seven-tube hexagonal flower vessel?" },
+    { title: "Look a little closer", body: "Original objects and reconstructions", prompt: "Are Chonghua Hall and the two thrones original artifacts?" },
+    { title: "Explore the museum", body: "A suggested viewing sequence", prompt: "How should I tour the museum and its exhibition areas?" }
+  ]) : persona?.id === DEFAULT_PERSONA_ID ? t.suggestions : [
     { title: language === "zh" ? "认识导览助手" : "Meet your guide", body: personaName,
       prompt: language === "zh" ? "你是谁？" : "Who are you?" },
     { title: language === "zh" ? "探索场馆" : "Explore the venue", body: persona?.venue[language] || "",
@@ -644,7 +670,7 @@ export default function ChatShell() {
 
       <main className="main-panel min-w-0" inert={sidebarOpen ? true : undefined}>
         <header className="topbar">
-          <div className="topbar-heading"><span>{persona?.venue[language] || (language === "zh" ? "中国旅行" : "CHINA, AT YOUR OWN PACE")}</span><strong>{activeTrip?.title || (language === "zh" ? "下一段旅程" : "Your next adventure")}</strong></div>
+          <div className="topbar-heading"><span>{persona?.venue[language] || "Tourmate"}</span><strong>{activeTrip?.title || (museum ? language === "zh" ? "一起读懂德寿宫" : "Discover Deshou Palace" : language === "zh" ? "下一段旅程" : "Your next adventure")}</strong></div>
           <div className="mobile-brand"><Brand name={personaName} avatar={avatar} /></div>
           <button className="mobile-history" ref={historyButtonRef} type="button" aria-label={t.openTrips}
             aria-expanded={sidebarOpen} aria-controls="trips-sidebar" onClick={() => setSidebarOpen(true)}><Icon name="menu" size={19} /></button>
@@ -683,7 +709,7 @@ export default function ChatShell() {
             </div>
           </section>
         ) : needsAuthentication ? (
-          <AuthPanel language={language} client={authClient} />
+          <AuthPanel language={language} client={authClient} museum={museum} />
         ) : (
           <div className="chat-layout">
             <section className={`conversation ${messages.length ? "has-messages" : ""}`} aria-label={activeTrip?.title || t.today}>
@@ -702,7 +728,7 @@ export default function ChatShell() {
                       <p className="welcome-copy">{persona?.id === DEFAULT_PERSONA_ID ? t.welcomeBody : persona?.greeting[language]}</p>
                       <span className="hero-caption"><Icon name="compass" size={15}/>{language === "zh" ? "少一点犹豫，多一点发现" : "Less wondering. More discovering."}</span>
                     </div>
-                    <TravelScene/>
+                    {museum ? <MuseumScene/> : <TravelScene/>}
                   </div>
                   <div className="starter-heading"><h2>{t.starterTitle}</h2><p>{t.starterHint}</p></div>
                   <div className="suggestion-grid">
@@ -719,7 +745,7 @@ export default function ChatShell() {
               ) : (
                 <div className="message-list" aria-live="polite">
                   {messages.map((message) => <Message key={message.id} message={message} language={language} copied={copied} onCopy={copyMessage} avatar={avatar} />)}
-                  {pending && <ThinkingIndicator key={activeTrip.id} language={language} avatar={avatar}/>}
+                  {pending && <ThinkingIndicator key={activeTrip.id} language={language} avatar={avatar} museum={museum}/>}
                   <div ref={endRef} />
                 </div>
               )}

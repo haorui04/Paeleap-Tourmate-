@@ -2,9 +2,9 @@
 >
 > **Safety testing:** [SECURITY-TESTING.md](SECURITY-TESTING.md) documents adversarial prompts, red/blue-team defenses, reproducible evidence and mandatory live-provider/database launch gates. Passing offline fixtures is not production safety certification.
 
-# Paeleap TourMate — integrated tourism chatbot
+# Tourmate — 小德兔 Museum AI Companion
 
-**Current architecture:** reusable museum companions alongside 1,000 bilingual China-travel FAQs, 40 destination profiles and 12 multi-city route outlines. These are optional retrieval references, not model training. See [knowledge coverage, research and database setup](docs/CHINA-TRAVEL-KNOWLEDGE.md), [museum setup](docs/MUSEUM-DEPLOYMENT.md) and [persona file format](examples/personas/README.md). A passing build is not public-launch certification.
+**Current focus:** the homepage opens Little De Rabbit / 小德兔, an independent AI companion for Hangzhou's Southern Song Deshou Palace Ruins Museum. It uses a versioned Supabase persona with 24 bilingual research records and DeepSeek-authored explanations. See [museum knowledge, response flow and limitations](docs/deshou-museum.md). Knowledge is reference context, not model training. Existing China-travel data and conversations remain available through `/?persona=tourmate`. A passing build is not public-launch certification.
 
 A bilingual Next.js application with a responsive chat interface, a local SQLite FAQ database for development (required Supabase FAQ storage in production), AI question selection, deterministic safety checks, persistent trip history, Supabase authentication, and a per-minute quota.
 
@@ -29,11 +29,11 @@ For a **local mock-only** smoke test, keep these variables in `.env.local`:
 ALLOW_LOCAL_DEMO=true
 AI_MOCK_MODE=true
 FAQ_BANK_SOURCE=local
-# Optional Little De Rabbit demonstration, not real museum content:
+# Enable the researched Little De Rabbit package for local development:
 PERSONA_LOAD_EXAMPLES=true
 ```
 
-These modes are **automatically disabled in production**. Offline mode uses a conservative similarity matcher, not a live AI API. Both modes return only the selected database answer; an unrelated or unrecognized question receives the China-tourism-only prompt. Safety and emergency rules take priority. Each trip has its own sidebar entry, messages, draft and conversation ID. Browser storage keeps transcripts separated by account and restores them after reload. If only session storage works, the UI explains the limitation.
+These modes are **automatically disabled in production**. Offline mode uses a conservative similarity matcher, not a live AI API, and returns stored reference answers. Production museum mode reads the published Supabase package and generates explanations with the configured model. Safety and emergency rules take priority. Each conversation has its own sidebar entry, messages, draft and conversation ID. Browser storage keeps transcripts separated by account and persona, and restores them after reload. If only session storage works, the UI explains the limitation.
 
 Local server context remains bounded to 30 minutes. If that context is missing after a restart, the local-only request can supply a bounded selection of earlier user/assistant messages. This optional `history` field is ignored in authenticated mode; signed-in context comes from the database. Local mode does not write to Supabase.
 

@@ -1,6 +1,6 @@
 # Museum persona packages
 
-`little-de-rabbit.json` is a **demonstration configuration**, not an official De Shou Palace knowledge base. It deliberately does not invent exhibition facts, opening hours, prices, booking links or official affiliation. Replace the demonstration entries with content approved by the venue before publication.
+`little-de-rabbit.json` exports the independently researched Deshou Palace package in `data/personas/deshou-palace.js`: 24 bilingual reference records with dated citations. It is not an official museum catalogue or curator-certified package. Review current labels and display status before presenting an official museum service. See [research and response flow](../../docs/deshou-museum.md).
 
 ## Package format
 

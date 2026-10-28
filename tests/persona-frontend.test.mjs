@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { DEFAULT_PERSONA_ID, MAX_PERSONA_FILE_BYTES, personaIdFromSearch, parsePublicPersona,
+import { DEFAULT_PERSONA_ID, ENTRY_PERSONA_ID, MAX_PERSONA_FILE_BYTES, personaIdFromSearch, parsePublicPersona,
   provenanceLabel, readPersonaPackage } from "../lib/client/personas.js";
 import { buildChatBody, parseChatResponse } from "../lib/client/chat.js";
 import { createTrip, tripStorageKey, restoreTripCollection, serializeTripCollection, mergeRemoteTrips, fetchRemoteTrips } from "../lib/client/trips.js";
@@ -11,7 +11,8 @@ const persona = { id: "deshou-rabbit", version: 1, name: { en: "Little De Rabbit
 const reply = { reply: "Museum guidance.", conversationId, safety: { status: "allowed" }, sources: [] };
 
 test("public profile links select only a valid slug and never silently fall back on an invalid museum", () => {
-  assert.equal(personaIdFromSearch(""), DEFAULT_PERSONA_ID);
+  assert.equal(personaIdFromSearch(""), ENTRY_PERSONA_ID);
+  assert.equal(personaIdFromSearch("?persona=tourmate"), DEFAULT_PERSONA_ID);
   assert.equal(personaIdFromSearch("?persona=deshou-rabbit"), "deshou-rabbit");
   for (const search of ["?persona=", "?persona=../tourmate", "?persona=DE-RABBIT", "?persona=%3Cscript%3E"]) {
     assert.throws(() => personaIdFromSearch(search));

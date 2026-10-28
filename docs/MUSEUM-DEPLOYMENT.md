@@ -6,7 +6,7 @@ One application can host up to 100 published museum profiles, in addition to the
 
 The platform safety policy is immutable from persona files or visitor prompts. Persona descriptions are structured configuration, not an arbitrary privileged prompt editor. Tone has three supported presets: professional, warm and child-friendly. Visitors cannot add persistent nicknames/sign-offs, change the role, remove required provenance or request fiction-style historical accounts. The interface can switch between English and Chinese without changing identity.
 
-The AI can select and combine up to three relevant approved records. The server—not the model—renders their text and fixed persona framing. This is intentionally **not unrestricted generative RAG**: it gives a stronger enforceable output boundary, at the cost of less flexible wording and dependence on good knowledge coverage. It does not make an irrelevant selection impossible, or make incorrect curator content true.
+Generic museum profiles select and combine up to three approved records, rendered by the server. The researched `little-de-rabbit` profile now has a separate DeepSeek explanation flow with validated structured output and source IDs; see [Deshou knowledge and response flow](deshou-museum.md). Its homepage is the default museum experience. The generic evidence-only flow remains available for other profiles. Neither flow proves semantic correctness or makes incorrect reference content true.
 
 ## 1. Configure a private staging deployment
 

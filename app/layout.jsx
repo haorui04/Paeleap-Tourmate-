@@ -1,8 +1,8 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "Paeleap TourMate",
-  description: "Your bilingual AI travel companion for exploring China, with thoughtful guidance, cultural discoveries and live city weather.",
+  title: "Tourmate · 小德兔 Museum Guide",
+  description: "Explore Hangzhou’s Southern Song Deshou Palace Ruins Museum with Little De Rabbit: bilingual artifact explanations, archaeological remains and sourced cultural context.",
   applicationName: "Paeleap TourMate"
 };
 

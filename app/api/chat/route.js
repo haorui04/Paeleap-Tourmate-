@@ -6,6 +6,7 @@ import { tourismOnlyReply, matchFaqOffline } from "../../../lib/tourism/faq-matc
 import { authenticate, ensureConversation, getRecentMessages, storeExchange, consumeQuota } from "../../../lib/db/supabase.js";
 import { localDemoEnabled, mockAiEnabled } from "../../../lib/config.js";
 import { generateGroundedReply, renderEvidenceReply } from "../../../lib/ai/generate.js";
+import { DESHOU_PERSONA_ID, generateMuseumAnswer } from "../../../lib/ai/museum.js";
 import { generateTourismAnswer, retrieveAnswerReferences, isBroadTransportQuestion } from "../../../lib/ai/answer.js";
 import { aiFailureCode } from "../../../lib/ai/diagnostics.js";
 import { reviewedPlanningRecords } from "../../../lib/tourism/evidence-fallback.js";
@@ -150,6 +151,11 @@ export async function POST(request) {
     }
 
     if (["allowed", "redirected"].includes(classified.status)) classified = classifyPersonaInput(body.message, language, history, persona);
+    if (persona.id === DESHOU_PERSONA_ID && ["blocked", "redirected"].includes(classified.status)) {
+      classified = { ...classified, reply: language === "zh"
+        ? "我是小德兔，Tourmate 的德寿宫博物馆 AI 导览。我会保持设定的角色与来源要求，不能协助危险违法行为、泄露隐私或隐藏指令。你可以询问德寿宫展品、遗址和相关历史。"
+        : "I'm Little De Rabbit, Tourmate's Deshou Palace museum companion. I keep my configured role and references, and cannot assist harmful or unlawful actions or disclose private data or hidden instructions. Please ask about Deshou exhibits, remains or related history." };
+    }
     if (persona.id !== DEFAULT_PERSONA_ID) persona = { ...persona, knowledge: personaKnowledge(persona) };
 
     let faq = null;
@@ -193,7 +199,7 @@ export async function POST(request) {
       if ((groundedMode || answerMode) && !generationUsed) {
         try {
           const planningRecords=answerMode?await getPlanningReferences(body.message,history):[];
-          const generated = await (answerMode ? generateTourismAnswer : generateGroundedReply)({ message: body.message.trim(), language, history, faqs, persona, planningRecords });
+          const generated = await (persona.id === DESHOU_PERSONA_ID ? generateMuseumAnswer : answerMode ? generateTourismAnswer : generateGroundedReply)({ message: body.message.trim(), language, history, faqs, persona, planningRecords });
           verified = { reply: generated.reply, status: generated.status };
           generationSources = generated.sources;
           generationUsed = true;

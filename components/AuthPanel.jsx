@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import TravelScene from "./TravelScene.jsx";
+import MuseumScene from "./MuseumScene.jsx";
 
 const copy = {
   en: {
@@ -42,8 +43,10 @@ const copy = {
   }
 };
 
-export default function AuthPanel({ language, client, administrator = false }) {
-  const t = copy[language] || copy.en;
+export default function AuthPanel({ language, client, administrator = false, museum = false }) {
+  const t = museum ? { ...(copy[language] || copy.en), ...(language === "zh" ? {
+    eyebrow: "你的博物馆探索空间", title: "登录后开始探索", body: "保存你的博物馆对话，与 Tourmate 小德兔一起理解文物与历史。"
+  } : { eyebrow: "YOUR MUSEUM SPACE", title: "Sign in to explore", body: "Save your museum conversations and discover artifacts and history with Tourmate's Little De Rabbit." }) } : copy[language] || copy.en;
   const [mode, setMode] = useState("signIn");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -77,14 +80,14 @@ export default function AuthPanel({ language, client, administrator = false }) {
   return (
     <section className={`auth-wrap ${administrator ? "" : "auth-landing"}`} aria-labelledby="auth-title">
       {!administrator && <div className="auth-promo">
-        <p className="section-kicker">{language === "zh" ? "下一段旅程，从这里开始" : "EVERY GREAT JOURNEY STARTS SOMEWHERE"}</p>
-        <h2>{language === "zh" ? <>心有所向，<br/><span>行有所伴。</span></> : <>Go somewhere new.<br/><span>Feel right at home.</span></>}</h2>
-        <p>{language === "zh" ? "从第一段车程到下一处风景，让你的 AI 中国旅行伙伴陪你从容探索。" : "From your first train ride to your next favourite place. Your AI companion makes exploring China feel a little more familiar."}</p>
-        <TravelScene/>
-        <span className="auth-promo-footnote">{language === "zh" ? "旅行建议 · 文化探索 · 实时天气" : "Travel guidance · Cultural discoveries · Live weather"}</span>
+        <p className="section-kicker">{museum ? "TOURMATE · LITTLE DE RABBIT" : language === "zh" ? "下一段旅程，从这里开始" : "EVERY GREAT JOURNEY STARTS SOMEWHERE"}</p>
+        <h2>{museum ? language === "zh" ? <>一件文物，<br/><span>一段历史。</span></> : <>Every artifact.<br/><span>A story to discover.</span></> : language === "zh" ? <>心有所向，<br/><span>行有所伴。</span></> : <>Go somewhere new.<br/><span>Feel right at home.</span></>}</h2>
+        <p>{museum ? language === "zh" ? "和小德兔一起探索德寿宫，认识展品、看懂遗址，让历史更容易理解。独立 AI 导览，非馆方官方服务。" : "Explore Deshou Palace with Little De Rabbit. Understand the objects, read the ruins, and discover their stories. An independent AI guide, not an official museum service." : language === "zh" ? "从第一段车程到下一处风景，让你的 AI 中国旅行伙伴陪你从容探索。" : "From your first train ride to your next favourite place. Your AI companion makes exploring China feel a little more familiar."}</p>
+        {museum ? <MuseumScene/> : <TravelScene/>}
+        <span className="auth-promo-footnote">{museum ? language === "zh" ? "文物讲解 · 遗址探索 · 历史文化" : "Artifact explanations · Archaeological remains · Cultural context" : language === "zh" ? "旅行建议 · 文化探索 · 实时天气" : "Travel guidance · Cultural discoveries · Live weather"}</span>
       </div>}
       <div className="auth-card">
-        <div className="auth-mark" aria-hidden="true">旅</div>
+        <div className="auth-mark" aria-hidden="true">{museum ? "兔" : "旅"}</div>
         <p className="section-kicker">{administrator ? (language === "zh" ? "管理员工作台" : "ADMINISTRATOR WORKSPACE") : t.eyebrow}</p>
         <h1 id="auth-title">{administrator ? (language === "zh" ? "管理员登录" : "Administrator sign-in") : t.title}</h1>
         <p className="auth-intro">{administrator ? (language === "zh" ? "请使用已被授权管理场馆资料的账户。普通访客账户没有发布权限。" : "Use an account authorized to manage venue profiles. Visitor accounts do not have publishing access.") : t.body}</p>

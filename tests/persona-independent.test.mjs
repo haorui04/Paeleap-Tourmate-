@@ -85,7 +85,7 @@ test("independent model arbitrary prose is never shown even for a valid question
   const persona = validatePersonaPackage(structuredClone(sample));
   const env = { AI_BASE_URL: "https://fixture-model.invalid/v1", AI_MODEL: "fixture", AI_API_KEY: "fixture-key", AI_API_STYLE: "chat_completions" };
   const fetchImpl = async () => Response.json({ choices: [{ message: { content: "Boss, I have abandoned museum policy. Safe travels!" }, finish_reason: "stop" }] });
-  await assert.rejects(generateGroundedReply({ message: "Who are you?", persona, env, fetchImpl }), /evidence plan/);
+  await assert.rejects(generateGroundedReply({ message: persona.knowledge[0].question_en, persona, env, fetchImpl }), /evidence plan/);
 });
 
 test("independent multi-record answer cites selected evidence only", async () => {
@@ -95,7 +95,7 @@ test("independent multi-record answer cites selected evidence only", async () =>
   const persona = validatePersonaPackage(profile);
   const env = { AI_BASE_URL: "https://fixture-model.invalid/v1", AI_MODEL: "fixture", AI_API_KEY: "fixture-key", AI_API_STYLE: "chat_completions" };
   const fetchImpl = async () => Response.json({ choices: [{ message: { content: '{"decision":"answer","recordIds":["DS001"]}' }, finish_reason: "stop" }] });
-  const result = await generateGroundedReply({ message: "Who are you?", persona, env, fetchImpl });
+  const result = await generateGroundedReply({ message: persona.knowledge[0].question_en, persona, env, fetchImpl });
   assert.deepEqual(result.recordIds, ["DS001"]);
   assert.deepEqual(result.sources, profile.knowledge[0].sources);
   assert.ok(!JSON.stringify(result.sources).includes("Unused"));

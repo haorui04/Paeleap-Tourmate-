@@ -11,7 +11,9 @@ const actor = "7a072cf3-8412-4a66-a7d2-37859b8e0418";
 const conversationId = "bdc5807d-09c5-4842-98ac-645ce927845f";
 const sample = JSON.parse(await readFile(new URL("../examples/personas/little-de-rabbit.json", import.meta.url), "utf8"));
 const profile = {
-  ...sample, venue: { en: "De Shou Palace", zh: "德寿宫" },
+  // A separate profile continues to exercise the generic evidence-selector path.
+  // The live Little De Rabbit prose path is covered in deshou-museum.test.mjs.
+  ...sample, id: "reviewed-palace", venue: { en: "De Shou Palace", zh: "德寿宫" },
   knowledge: [
     { id: "MUSEUM_GUIDE", question_en: "What is the De Shou Palace companion service?", question_zh: "德寿宫伙伴服务是什么？",
       answer_en: "I am Little De Rabbit, the administrator-configured exhibition companion for De Shou Palace.",
