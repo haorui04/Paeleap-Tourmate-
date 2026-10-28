@@ -23,6 +23,8 @@ Production reads the persona and its knowledge from Supabase `persona_packages`.
 
 General Southern Song context may explain a documented object, but must be distinguished from object-specific evidence. A suggestion for a viewing sequence is not a floor plan, accessibility route or current schedule. Unrelated travel itineraries are outside this museum role. Live weather and attachment analysis remain disabled for museum profiles; this change does not promise photographic authentication.
 
+Questions explicitly requesting a known object's shape, measurements, material, inscriptions or provenance use a stricter path: the server renders the published description and a limitation statement. It does not ask the model to fill missing catalogue fields. Cultural and historical elaboration remains generative. The UI labels these documented descriptions separately from AI explanations.
+
 If the model unnecessarily asks for clarification on an artifact already identified in server-owned history, one bounded correction asks it to explain the documented details and identify the missing ones. The same output validation still applies. A second clarification returns the known record with a limitation statement; a failed provider call is not retried or labeled successful generation.
 
 ## Verification and practical limits

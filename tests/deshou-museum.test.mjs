@@ -43,7 +43,7 @@ test("Chinese detail follow-ups retain museum context", () => {
 });
 test("a valid unnecessary clarification gets one bounded correction for an already identified object", async () => {
   let calls = 0;
-  const result = await generateMuseumAnswer({ message: "请详细讲讲它的器形和用途", language: "zh", persona, env,
+  const result = await generateMuseumAnswer({ message: "请详细讲讲它的文化背景", language: "zh", persona, env,
     history: [{ role: "user", content: "南宋官窑青釉花觚是什么？" }], fetchImpl: async (_url, init) => {
       calls++;
       if (calls === 2) assert.match(init.body, /server_followup_reminder/);
@@ -52,6 +52,15 @@ test("a valid unnecessary clarification gets one bounded correction for an alrea
     } });
   assert.equal(calls, 2); assert.equal(result.mode, "museum_generated"); assert.match(result.reply, /花觚/);
 });
+for (const [language, message] of [["zh", "请详细讲讲它的器形和用途"], ["en", "Tell me more about its shape and dimensions"]]) {
+  test("physical details are rendered from the identified record without generative inference: " + language, async () => {
+    const result = await generateMuseumAnswer({ message, language, persona, env,
+      history: [{ role: "user", content: "南宋官窑青釉花觚是什么？" }], fetchImpl: () => assert.fail("Physical details must not be generated") });
+    assert.equal(result.mode, "curated_evidence"); assert.deepEqual(result.recordIds, ["DS009"]);
+    assert.ok(result.reply.includes(persona.knowledge.find(row => row.id === "DS009")[language === "zh" ? "answer_zh" : "answer_en"]));
+    assert.doesNotMatch(result.reply, /细长|略鼓|高圈足|slender neck|bulbous/);
+  });
+}
 test("DeepSeek-protocol response is explanatory prose with only supplied citations", async () => {
   const result = await generateMuseumAnswer({ message: prompt, persona, env, fetchImpl: model() });
   assert.equal(result.reply, explanation); assert.equal(result.mode, "museum_generated");
