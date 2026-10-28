@@ -83,9 +83,10 @@ function services(t, options = {}) {
       const selected = url.searchParams.get("persona_id");
       return Response.json(selected === `eq.${published.id}` && !options.missingProfile ? [{ payload: published }] : []);
     }
-    if (url.pathname === "/rest/v1/tourism_faq") {
+    if (url.pathname === "/rest/v1/tourism_faq_v2") {
       assert.equal(headers.get("authorization"), "Bearer fixture-server-key");
-      return Response.json(CHINA_TOURISM_FAQS);
+      const offset=Number(url.searchParams.get("offset")||0);
+      return Response.json(CHINA_TOURISM_FAQS.slice(offset,offset+500));
     }
     if (url.pathname === "/rest/v1/conversations") {
       assert.equal(headers.get("authorization"), "Bearer fixture-user-token");
@@ -138,13 +139,13 @@ test("custom persona generic knowledge IDs work through the actual route with fi
     assert.equal(payload.ai.mode, "curated_faq");
   }
   assert.equal(modelCalls(calls).length, 0);
-  assert.equal(calls.some((call) => call.url.pathname === "/rest/v1/tourism_faq"), false);
+  assert.equal(calls.some((call) => call.url.pathname === "/rest/v1/tourism_faq_v2"), false);
 });
 
 test("default persona retains every canonical answer from the 100-record bank in both languages", async (t) => {
   configure(t);
   const calls = services(t, { boundId: "tourmate", boundVersion: 1 });
-  assert.equal(CHINA_TOURISM_FAQS.length, 100);
+  assert.equal(CHINA_TOURISM_FAQS.length, 1000);
   for (const faq of CHINA_TOURISM_FAQS) for (const language of ["en", "zh"]) {
     const response = await POST(request({ personaId: "tourmate", message: faq[`question_${language}`], language }));
     const payload = await response.json();
@@ -361,5 +362,5 @@ test("exact identity questions use only the published greeting without knowledge
     assert.deepEqual(payload.sources, []);
   }
   assert.equal(modelCalls(calls).length, 0);
-  assert.equal(calls.some((call) => call.url.pathname === "/rest/v1/tourism_faq"), false);
+  assert.equal(calls.some((call) => call.url.pathname === "/rest/v1/tourism_faq_v2"), false);
 });

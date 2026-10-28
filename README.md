@@ -4,7 +4,7 @@
 
 # Paeleap TourMate — integrated tourism chatbot
 
-**Current architecture:** reusable, administrator-configured museum companions alongside the original 100 bilingual China-tourism FAQs. See [museum setup and integration](docs/MUSEUM-DEPLOYMENT.md), [persona file format](examples/personas/README.md), and [remediation results](docs/SECURITY-REMEDIATION-2026-10-23.md). A passing build is not public-launch certification.
+**Current architecture:** reusable museum companions alongside 1,000 bilingual China-travel FAQs, 40 destination profiles and 12 multi-city route outlines. These are optional retrieval references, not model training. See [knowledge coverage, research and database setup](docs/CHINA-TRAVEL-KNOWLEDGE.md), [museum setup](docs/MUSEUM-DEPLOYMENT.md) and [persona file format](examples/personas/README.md). A passing build is not public-launch certification.
 
 A bilingual Next.js application with a responsive chat interface, a local SQLite FAQ database for development (required Supabase FAQ storage in production), AI question selection, deterministic safety checks, persistent trip history, Supabase authentication, and a per-minute quota.
 
@@ -56,7 +56,7 @@ For semantic AI matching, configure the server-only provider key, exact `AI_MODE
 There was no clearly identified Supabase project for this application on 2026-10-15. **No live schema has been applied.**
 
 1. Create a dedicated Supabase project for this chatbot.
-2. Apply `supabase/schema.sql` for a new database, `supabase/faq-schema.sql`, `supabase/faq-seed.sql`, `supabase/personas-schema.sql`, `supabase/conversation-personas.sql` and `supabase/quota-hardening.sql` in order. Existing installations apply only the new migrations and updated seed after backup/staging verification; do not rerun non-idempotent old policy creation blindly.
+2. For a new database apply `supabase/schema.sql`, `supabase/faq-schema.sql`, `supabase/personas-schema.sql`, `supabase/conversation-personas.sql`, `supabase/quota-hardening.sql`, then `supabase/knowledge-schema.sql`, `supabase/faq-seed-v2.sql` and `supabase/planning-seed.sql`. Existing installations need only the knowledge migration and its new seeds after verification; retain the legacy `tourism_faq` bank for rollback. Do not rerun old policy creation blindly.
 3. Use that project's URL and publishable key for `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`.
 4. Set `SUPABASE_SERVICE_ROLE_KEY` to the server-only **legacy service_role JWT** for the project. Never expose this to client code or commit it.
 5. Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for the browser to the same project URL and publishable key. Enable email/password authentication and configure your application's URL in Supabase Auth.
@@ -124,10 +124,13 @@ Use a valid Supabase session access token; **never** send the service-role key. 
 - `lib/ai/provider.js` — semantic FAQ classifier, strict ID parser and bounded context.
 - `lib/ai/safety.js` — rule-based input checks and conservative output safeguards.
 - `lib/tourism/faq-matching.js` — conservative offline matcher and bilingual no-match prompt.
-- `data/china-tourism-faq.js` — editable seed, exactly 100 bilingual questions/answers.
+- `data/china-tourism-faq.js`, `data/china-tourism-faq-expanded.json` — original 100 plus 900 additional bilingual FAQs.
+- `data/travel-destinations.json`, `data/travel-itinerary-routes.json` — destination profiles and original route suggestions.
+- `data/travel-knowledge-sources.json` — labelled research-discovery catalogue; see evidence-scope limitations.
+- `lib/db/planning.js` — bounded server-only destination retrieval for TourMate planning requests.
 - `lib/db/faq.js` — SQLite seed/read validation and optional server-only Supabase FAQ reads.
 - `scripts/faq-bank.mjs` — initialize/check SQLite and export the Supabase seed.
-- `supabase/faq-schema.sql`, generated `supabase/faq-seed.sql` — optional remote FAQ setup.
+- `supabase/knowledge-schema.sql`, `supabase/faq-seed-v2.sql`, `supabase/planning-seed.sql` — versioned FAQ and separate planning tables/seeds.
 - `lib/tourism/retrieval.js`, `data/attractions.js` — legacy attraction reference utilities; no longer the chat reply path.
 - `lib/db/supabase.js` — authenticated REST reads, server-side writes and quota.
 - `supabase/schema.sql` — SQL schema and RLS.
@@ -146,13 +149,12 @@ Trip-history tests also cover migration, keeping more than forty messages, resto
 
 ## Known limits and Day 2 handoff
 
-- The 100-question bank is general guidance, not live policy, prices, availability, routing or booking data. Generated mode can provide safe general travel answers outside the bank. Only the dedicated weather tool supplies live weather; the language model must not invent current conditions.
+- The expanded knowledge libraries are general guidance and suggested plans, not live policy, fares, schedules, availability or confirmed bookings. Generated mode can provide safe general travel answers beyond the bank. Only the dedicated weather tool supplies live weather; the model must not invent current conditions.
 - SQLite needs a writable persistent project directory. Use the Supabase FAQ option for deployments with ephemeral/read-only disks; never silently fall back when the selected database fails.
 - Prompt-injection and harmful-content checks are baseline heuristics, **not** a comprehensive safety guarantee.
 - Output validation is intentionally conservative; some useful timetable-like suggestions may be replaced with a verification warning.
 - Cross-device history requires configured Supabase. Local transcripts persist in browser storage until that storage is cleared; local server context is temporary.
 - Provider authentication and database schema require credentials and deployment configuration.
-- Real provider responses and live Supabase sign-in require credentials that have not been supplied in this project.
-- No production deployment has been performed yet.
+- Real provider responses and live Supabase sign-in require private deployment credentials. Never commit those keys in the repository.
 
-**Next:** configure the real provider and dedicated database, then verify live authentication, RLS, provider behavior and spending controls before a public launch.
+Before a public launch, review the published guidance, authentication, RLS, live provider behavior and spending controls in the intended deployment.

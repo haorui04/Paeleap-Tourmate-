@@ -1,4 +1,5 @@
 import { hasConfiguredValue, localDemoEnabled, mockAiEnabled, resolveAiApiKey } from "../../../lib/config.js";
+import { FAQ_BANK_SIZE } from '../../../lib/knowledge-config.js';
 
 export const runtime = "nodejs";
 
@@ -22,7 +23,7 @@ export async function GET() {
     aiResponseMode,
     aiApiStyle: ["responses", "chat_completions", "anthropic"].includes(process.env.AI_API_STYLE) ? process.env.AI_API_STYLE : process.env.AI_API_STYLE ? "invalid" : "responses",
     // Configuration only, not a database/provider health check.
-    faqBank: { source: process.env.FAQ_BANK_SOURCE || (process.env.NODE_ENV === "production" ? "supabase" : "local"), expectedCount: 100,
+    faqBank: { source: process.env.FAQ_BANK_SOURCE || (process.env.NODE_ENV === "production" ? "supabase" : "local"), expectedCount: FAQ_BANK_SIZE,
       matchingMode: mockAiEnabled() ? "offline" : "ai" }
   }, { status: process.env.NODE_ENV === "production" && !ready ? 503 : 200, headers: { "Cache-Control": "no-store" } });
 }

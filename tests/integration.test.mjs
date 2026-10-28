@@ -178,7 +178,7 @@ test("AI selects an ID but only its exact stored answer reaches the client and h
 
 test("AI null, unknown ID and low confidence all return the tourism-only prompt", async (t) => {
   configure(t, { AI_MOCK_MODE: "false" });
-  for (const reply of ['{"faqId":null,"confidence":0}', '{"faqId":"CN999","confidence":1}', '{"faqId":"CN061","confidence":0.3}']) {
+  for (const reply of ['{"faqId":null,"confidence":0}', '{"faqId":"CN9999","confidence":1}', '{"faqId":"CN061","confidence":0.3}']) {
     const calls = services(t, { reply });
     const data = await (await POST(request())).json();
     assert.equal(data.safety.status, "redirected");

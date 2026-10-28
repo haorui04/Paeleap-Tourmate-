@@ -89,7 +89,7 @@ for (const message of [
 });
 
 test("all canonical FAQs remain allowed and default answers are not altered", () => {
-  assert.equal(bank.length, 100);
+  assert.equal(bank.length, 1000);
   for (const row of bank) for (const language of ["en", "zh"]) {
     assert.equal(classifyInput(row["question_" + language], language).status, "allowed", row.id + " " + language);
   }
@@ -136,7 +136,7 @@ test("direct selectFaq rejects malicious input before any provider request", asy
 
 test("strict selection grammar rejects duplicate, escaped, injected and non-finite output", () => {
   for (const content of [
-    '{"faqId":"CN999","faqId":"CN001","confidence":1}',
+    '{"faqId":"CN9999","faqId":"CN001","confidence":1}',
     '{"faqId":"CN001","confidence":0,"confidence":1}',
     '{"faq\\u0049d":"CN001","confidence":1}',
     '{"faqId":"CN001","confidence":1e999}',

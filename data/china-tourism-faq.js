@@ -1,6 +1,7 @@
 // Canonical, editable seed for the FAQ database. Answers are general guidance,
 // not live policy, booking, medical, legal, timetable, price or weather data.
 // Never add credentials or user data here. Run npm run faq:check after editing.
+import expandedFaqs from './china-tourism-faq-expanded.json' with { type: 'json' };
 const sources = {
   entry: { name: "National Immigration Administration", url: "https://en.nia.gov.cn/" },
   payments: { name: "State Council: payment guide for visitors", url: "https://english.www.gov.cn/news/202404/11/content_WS6617c858c6d0868f4e8e5f4d.html" },
@@ -324,7 +325,8 @@ const rows = [
     "查询本国驻华使领馆官网，核实领区、办公安排及紧急联系方式。通过官方渠道申请领事协助；领事服务不能替代当地紧急救援。", ["consular assistance", "使馆领事求助"]]
 ];
 
-export const CHINA_TOURISM_FAQS = rows.map(([category, question_en, question_zh, answer_en, answer_zh, aliases, references = []], index) => ({
+export const LEGACY_TOURISM_FAQS = rows.map(([category, question_en, question_zh, answer_en, answer_zh, aliases, references = []], index) => ({
   id: `CN${String(index + 1).padStart(3, "0")}`, category,
   question_en, question_zh, answer_en, answer_zh, aliases, sources: references
 }));
+export const CHINA_TOURISM_FAQS = [...LEGACY_TOURISM_FAQS, ...expandedFaqs];

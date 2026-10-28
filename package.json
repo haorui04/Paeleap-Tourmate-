@@ -17,6 +17,8 @@
     "test:redteam": "node scripts/redteam.mjs",
     "faq:check": "node scripts/faq-bank.mjs",
     "faq:export": "node scripts/faq-bank.mjs --export",
+    "knowledge:check": "node scripts/knowledge-check.mjs",
+    "planning:export": "node scripts/planning-export.mjs",
     "ai:check": "node scripts/check-sub2api.mjs"
   },
   "dependencies": {

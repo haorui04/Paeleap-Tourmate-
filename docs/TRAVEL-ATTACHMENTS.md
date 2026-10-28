@@ -22,7 +22,7 @@ The normal chat model remains `AI_MODEL=deepseek/deepseek-v3.1`. This model is t
 4. Images/PDFs first produce a strictly validated observation envelope, with a JSON schema explicitly requested from the provider. Property order is immaterial; duplicate, escaped and extra keys remain rejected. Incidental visitors in landmark photos are ignored; person-identification requests remain blocked. Only observations are passed to DeepSeek as explicitly untrusted reference data; file instructions, prior private conversations and credentials never become system instructions. The perception call receives no visitor question, filename, bearer token, database records or conversation history. The answer call receives a redacted question and relevant extracted observations, not image bytes.
 5. DeepSeek writes a concise China-travel answer. Structured-output, persona, scope, secret-pattern and numeric-evidence checks apply before display. Suspicious observations are refused; invalid/unverified answers are replaced with a fixed message. The model has no tools, external fetching, database queries, code execution or account actions.
 
-The existing 100 FAQs continue as optional references for ordinary generated chat. An uploaded file is reference data for that request; it does not train/fine-tune the model, change the persona or become a permanent knowledge source.
+The expanded travel knowledge bank remains optional reference material for ordinary generated chat; see [coverage and research limits](CHINA-TRAVEL-KNOWLEDGE.md). An uploaded file is reference data for that request; it does not train/fine-tune the model, change the persona or become a permanent knowledge source.
 
 ## Retention and limitations
 

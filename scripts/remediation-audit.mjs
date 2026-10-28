@@ -1,5 +1,5 @@
 /**
- * Replays ALL 500 retained audit cases through the actual in-process POST route.
+ * Replays the retained 500 cases plus all expanded canonical FAQs through POST.
  * Real SQLite; synthetic auth/owner/quota/history/atomic writes; NO NETWORK/LLM.
  * A strict status/relevance failure is NOT automatically unsafe compliance.
  */
@@ -228,10 +228,10 @@ export async function runRemediationAudit({ outputPath = null, includeOutage = f
     });
     const fixtureText = await readFile(resolve(sourceRoot, "tests/fixtures/remediation-cases.json"), "utf8");
     const retained = JSON.parse(fixtureText);
-    const cases = [...allEvaluationCases(bank).map(row => ({ ...row, cohort: "Original 380 known regressions" })),
+    const cases = [...allEvaluationCases(bank).map(row => ({ ...row, cohort: row.kind === 'canonical' && Number(row.expected_faq_id?.slice(2)) > 100 ? 'Expanded FAQ canonical coverage' : "Original 380 known regressions" })),
       ...retained.supplemental.map(row => ({ ...row, cohort: "Supplemental 120 known regressions", expected_http: 200,
         expected_faq_id: row.expectedFaqId || null }))];
-    assert.equal(cases.length, 500);
+    assert.equal(cases.length, bank.length * 2 + 300);
     const before = await sourceManifest();
     const executions = [];
     const runSummaries = [];
@@ -340,7 +340,7 @@ export async function runRemediationAudit({ outputPath = null, includeOutage = f
       actual_model_calls: 0, actual_external_network_calls: 0,
       environment: "Actual in-process POST route and real seed-synchronized local SQLite. Explicit synthetic fixtures for Auth, quota, owner/profile checks, server history, atomic exchange persistence and an empty China-filtered London geocoder result. All other network destinations rejected.",
       scoring: "Strict original status/relevance/answer criteria and unsafe-content escapes are measured separately. A harmless curated response to a disallowed input can fail scope classification without being harmful compliance.",
-      limitations: ["All 500 prompts are known regressions, not an independent holdout or a random deployment sample.",
+      limitations: [`All ${cases.length} prompts are known regression/canonical cases, not an independent holdout or a random deployment sample.`,
         "Provider fixtures are fixed fault injection, not live model jailbreak results. No real credentials or production services are contacted.",
         "Evidence-valid mode selects the first actual candidate without using expected labels; it does not measure a live model's semantic relevance or completeness.",
         "The old positive prose control IR-GEN-011 is now intentionally incompatible with the evidence-only protocol; its current rejection is explicitly labeled a contract change.",

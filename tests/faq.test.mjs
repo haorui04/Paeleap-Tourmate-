@@ -11,15 +11,15 @@ import { classifyInput, validateOutput } from "../lib/ai/safety.js";
 import { POST } from "../app/api/chat/route.js";
 import { restoreTripCollection, serializeTripCollection, createTrip } from "../lib/client/trips.js";
 
-test("exactly 100 bilingual records survive SQLite persistence and repeated reads", (t) => {
+test("exactly 1000 bilingual records survive SQLite persistence and repeated reads", (t) => {
   const directory = mkdtempSync(join(tmpdir(), "paeleap-faq-test-"));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
   const target = join(directory, "faq.sqlite");
-  assert.equal(validateFaqBank(bank).length, 100);
+  assert.equal(validateFaqBank(bank).length, 1000);
   assert.deepEqual(readLocalFaqBank(target), bank);
   assert.deepEqual(readLocalFaqBank(target), bank);
-  assert.throws(() => validateFaqBank(bank.slice(0, 99)), /exactly 100/);
-  assert.throws(() => validateFaqBank([...bank.slice(0, 99), bank[0]]), /duplicate/);
+  assert.throws(() => validateFaqBank(bank.slice(0, 99)), /exactly 1000/);
+  assert.throws(() => validateFaqBank([...bank.slice(0, 999), bank[0]]), /duplicate/);
 });
 
 for (const faq of bank) for (const language of ["en", "zh"]) {
@@ -57,7 +57,9 @@ test("narrow follow-ups use context without making unrelated messages match", ()
 
 test("AI output parser accepts only confident known IDs and no model-written answer", () => {
   assert.deepEqual(parseFaqSelection('{"faqId":"CN061","confidence":0.98}', bank), { faqId: "CN061", confidence: 0.98 });
-  for (const value of [null, "", "I recommend West Lake", '```json\n{"faqId":"CN061","confidence":1}\n```', '{"faqId":"CN999","confidence":1}', '{"faqId":"CN061","confidence":"1"}', '{"faqId":"CN061","confidence":0.84}', '{"faqId":"CN061","confidence":1.1}', '{"faqId":"CN061","confidence":1,"reply":"invented"}', '{"faqId":null,"confidence":0}', "[]", "1"]) {
+  assert.deepEqual(parseFaqSelection('{"faqId":"CN1000","confidence":0.98}', bank), { faqId: "CN1000", confidence: 0.98 });
+  assert.equal(parseFaqSelection('{"faqId":"CN1001","confidence":1}', bank), null);
+  for (const value of [null, "", "I recommend West Lake", '```json\n{"faqId":"CN061","confidence":1}\n```', '{"faqId":"CN9999","confidence":1}', '{"faqId":"CN061","confidence":"1"}', '{"faqId":"CN061","confidence":0.84}', '{"faqId":"CN061","confidence":1.1}', '{"faqId":"CN061","confidence":1,"reply":"invented"}', '{"faqId":null,"confidence":0}', "[]", "1"]) {
     assert.equal(parseFaqSelection(value, bank), null, String(value));
   }
 });
@@ -77,14 +79,15 @@ test("Supabase FAQ read uses server credentials and fails closed on an incomplet
   t.after(() => { for (const key of ["FAQ_BANK_SOURCE", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"]) if (saved[key] === undefined) delete process.env[key]; else process.env[key] = saved[key]; });
   let rows = bank;
   t.mock.method(globalThis, "fetch", async (url, init) => {
-    assert.equal(new URL(url).pathname, "/rest/v1/tourism_faq");
+    assert.equal(new URL(url).pathname, "/rest/v1/tourism_faq_v2");
     assert.equal(init.headers.Authorization, "Bearer server-test-key");
     assert.equal(init.cache, "no-store");
-    return Response.json(rows);
+    const offset=Number(new URL(url).searchParams.get("offset")||0);
+    return Response.json(rows.slice(offset,offset+500));
   });
   assert.deepEqual(await getFaqBank(), bank);
   rows = bank.slice(1);
-  await assert.rejects(getFaqBank(), /exactly 100/);
+  await assert.rejects(getFaqBank(), /exactly 1000/);
 });
 
 test("unmatched API replies are bilingual and stay separate from safety overrides", async (t) => {

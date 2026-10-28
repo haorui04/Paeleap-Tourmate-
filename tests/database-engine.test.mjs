@@ -18,7 +18,7 @@ const CONVERSATIONS = {
   b: "20000000-0000-4000-8000-000000000002",
   builtin: "20000000-0000-4000-8000-000000000003"
 };
-const MIGRATIONS = ["schema.sql", "faq-schema.sql", "personas-schema.sql", "conversation-personas.sql", "quota-hardening.sql"];
+const MIGRATIONS = ["schema.sql", "faq-schema.sql", "personas-schema.sql", "conversation-personas.sql", "quota-hardening.sql", "knowledge-schema.sql"];
 const sample = JSON.parse(await readFile(new URL("../examples/personas/little-de-rabbit.json", import.meta.url), "utf8"));
 
 test("embedded PostgreSQL migration, privilege, RLS, publication, exchange and quota checks", async (t) => {
@@ -71,7 +71,7 @@ test("embedded PostgreSQL migration, privilege, RLS, publication, exchange and q
   };
   const messageCount = (id = CONVERSATIONS.a) => scalar("select count(*)::integer from public.messages where conversation_id = $1::uuid", [id]);
 
-  await t.test("apply all five repository SQL migrations verbatim to a real SQL engine", async () => {
+  await t.test("apply all six repository SQL migrations verbatim to a real SQL engine", async () => {
     // Explicitly emulate managed Supabase prerequisites, not application fixes:
     // auth users/auth.uid(), API roles, public schema usage, and the standard
     // service_role table default ACL. JWT validation itself is NOT simulated.
@@ -98,6 +98,20 @@ test("embedded PostgreSQL migration, privilege, RLS, publication, exchange and q
     assert.match(version, /^PostgreSQL /);
     t.diagnostic(version);
     assert.equal(await scalar("select count(*)::integer from pg_policies where schemaname = 'public'"), 3);
+  });
+
+  await t.test("new knowledge accepts CN1000 without changing the legacy table or opening visitor writes", async () => {
+    await service(async () => {
+      await query("insert into public.tourism_faq(id,category,question_en,question_zh,answer_en,answer_zh) values ('CN001','fixture','Old question','旧问题','Old answer','旧回答')");
+      await query("insert into public.tourism_faq_v2(id,category,question_en,question_zh,answer_en,answer_zh) values ('CN1000','fixture','New question','新问题','New answer','新回答')");
+      await denied(() => query("insert into public.tourism_faq_v2(id,category,question_en,question_zh,answer_en,answer_zh) values ('CN10000','fixture','Invalid','无效','Invalid','无效')"), '23514');
+    });
+    assert.equal(await scalar("select count(*)::integer from public.tourism_faq"), 1);
+    assert.equal(await scalar("select count(*)::integer from public.tourism_faq_v2"), 1);
+    for(const role of ['anon','authenticated'])await asRole(role,USERS.a,async()=>{
+      await denied(()=>query("update public.tourism_faq_v2 set answer_en='visitor edit' where id='CN1000'"));
+      await denied(()=>query("insert into public.travel_itinerary_routes(id,payload,checked_on) values ('visitor','{}','2026-10-28')"));
+    });
   });
 
   await t.test("service-only publication creates version 1 and version 2 and exposes latest version only", async () => {
@@ -137,7 +151,7 @@ test("embedded PostgreSQL migration, privilege, RLS, publication, exchange and q
   for (const role of ["anon", "authenticated"]) {
     await t.test(`${role} cannot read private persona packages, latest view, or FAQ bank`, async () => {
       await asRole(role, USERS.a, async () => {
-        for (const table of ["persona_packages", "persona_profiles_latest", "tourism_faq"]) {
+        for (const table of ["persona_packages", "persona_profiles_latest", "tourism_faq", "tourism_faq_v2", "travel_knowledge_sources", "travel_destinations", "travel_itinerary_routes"]) {
           await denied(() => query(`select * from public.${table}`));
         }
       });

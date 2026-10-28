@@ -7,7 +7,13 @@ import { parseChatResponse } from "../lib/client/chat.js";
 import { provenanceLabel } from "../lib/client/personas.js";
 import { compactWeatherView, WEATHER_CREDIT } from '../lib/weather-format.js';
 import { readFile } from "node:fs/promises";
+import { CHINA_TOURISM_FAQS } from '../data/china-tourism-faq.js';
 const venue = JSON.parse(await readFile(new URL("../examples/personas/little-de-rabbit.json", import.meta.url), "utf8"));
+test('static travel guidance and named snow attractions do not become live weather lookups',()=>{
+ for(const faq of CHINA_TOURISM_FAQS)for(const lang of ['en','zh'])assert.equal(isWeatherRequest(faq['question_'+lang]),false,faq.id+' '+lang);
+ assert.equal(isWeatherRequest('What is the weather in Shanghai tomorrow?'),true);
+ assert.equal(isWeatherRequest('北京现在的天气怎么样？'),true);
+});
 
 const NOW = Date.parse("2026-10-27T05:00:00Z");
 const location = { latitude: 39.9, longitude: 116.4 };

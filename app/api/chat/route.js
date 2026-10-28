@@ -1,6 +1,7 @@
 import { classifyInput, classifyPersonaInput, validateOutput } from "../../../lib/ai/safety.js";
 import { selectFaq, sanitizeFaqHistory } from "../../../lib/ai/provider.js";
 import { getFaqBank } from "../../../lib/db/faq.js";
+import { getPlanningReferences } from '../../../lib/db/planning.js';
 import { tourismOnlyReply, matchFaqOffline } from "../../../lib/tourism/faq-matching.js";
 import { authenticate, ensureConversation, getRecentMessages, storeExchange, consumeQuota } from "../../../lib/db/supabase.js";
 import { localDemoEnabled, mockAiEnabled } from "../../../lib/config.js";
@@ -191,7 +192,8 @@ export async function POST(request) {
       const groundedMode = (process.env.AI_RESPONSE_MODE === "grounded" || persona.id !== DEFAULT_PERSONA_ID) && !demo && !mockAiEnabled();
       if ((groundedMode || answerMode) && !generationUsed) {
         try {
-          const generated = await (answerMode ? generateTourismAnswer : generateGroundedReply)({ message: body.message.trim(), language, history, faqs, persona });
+          const planningRecords=answerMode?await getPlanningReferences(body.message,history):[];
+          const generated = await (answerMode ? generateTourismAnswer : generateGroundedReply)({ message: body.message.trim(), language, history, faqs, persona, planningRecords });
           verified = { reply: generated.reply, status: generated.status };
           generationSources = generated.sources;
           generationUsed = true;

@@ -1,0 +1,694 @@
+[
+  {
+    "id": "DEST_ROUTE_GOLDEN_TRIANGLE",
+    "category": "multi_city_planning",
+    "question_en": "How can I plan the Beijing → Xian → Shanghai route?",
+    "question_zh": "如何安排北京→西安→上海路线？",
+    "answer_en": "Suggested route: Beijing → Xian → Shanghai. Compare high-speed rail and flights for each intercity leg using door-to-door time, exact stations, airport access and baggage. Keep the arrival and departure days light. Choose a multi-city international ticket if it avoids backtracking. This is an original planning outline, not an advertised package, fixed travel duration or confirmed booking. Ask how many nights, travel dates, interests and mobility requirements before allocating days.",
+    "answer_zh": "建议路线：北京→西安→上海。每段跨城分别按门到门时间、具体车站、机场接驳及行李比较高铁与航班。抵达和离开日减轻安排，可比较不同城市入离境机票以减少折返。这是原创规划框架，并非在售旅行套餐、固定用时或已确认预订。分配天数前先询问夜数、出行日期、兴趣及行动需求。",
+    "aliases": [],
+    "city_aliases": [
+      "Beijing → Xian → Shanghai",
+      "北京→西安→上海"
+    ],
+    "cities": [
+      "beijing",
+      "xian",
+      "shanghai"
+    ],
+    "sources": [
+      {
+        "name": "Official reference: Guide to Accommodation Registration for Foreigners in Beijing",
+        "url": "https://english.beijing.gov.cn/livinginbeijing/applicationfordocuments/202107/t20210719_2439278.html"
+      },
+      {
+        "name": "Official reference: 画册设计绿色版20240819",
+        "url": "https://wb.beijing.gov.cn/en/policy_release/others_1/202408/P020240821604219730939.pdf"
+      },
+      {
+        "name": "Agency route inspiration: How to Visit Forbidden City in Beijing, Palace Museum Tour Tips",
+        "url": "https://www.travelchinaguide.com/attraction/beijing/forbidden-city/"
+      },
+      {
+        "name": "Agency route inspiration: 打印",
+        "url": "https://www.chinahighlights.com/image/pdf/beijing-tour-planner.pdf"
+      },
+      {
+        "name": "Agency route inspiration: How to Visit Terracotta Army - A Perfect One-Day Tour Plan",
+        "url": "https://www.travelchinaguide.com/attraction/shaanxi/xian/visit-terracotta-army.htm"
+      },
+      {
+        "name": "Agency route inspiration: Xi’an Day Tour to Terracotta Army & City Wall: No Shops",
+        "url": "https://www.travelchinaguide.com/package/xian/one-day-bus-tour/"
+      }
+    ],
+    "research": {
+      "source_ids": [
+        "SRC005",
+        "SRC010",
+        "SRC072",
+        "SRC078",
+        "SRC064",
+        "SRC065",
+        "SRC067",
+        "SRC068",
+        "SRC047",
+        "SRC048",
+        "SRC076",
+        "SRC020"
+      ],
+      "checked_on": "2026-10-28",
+      "content_type": "original_route_synthesis"
+    }
+  },
+  {
+    "id": "DEST_ROUTE_JIANGNAN",
+    "category": "multi_city_planning",
+    "question_en": "How can I plan the Shanghai → Suzhou → Hangzhou route?",
+    "question_zh": "如何安排上海→苏州→杭州路线？",
+    "answer_en": "Suggested route: Shanghai → Suzhou → Hangzhou. A compact heritage and urban circuit. Check the actual rail stations rather than treating every station in a city as interchangeable. Decide whether fewer hotel changes or less daily commuting matters more. This is an original planning outline, not an advertised package, fixed travel duration or confirmed booking. Ask how many nights, travel dates, interests and mobility requirements before allocating days.",
+    "answer_zh": "建议路线：上海→苏州→杭州。紧凑的城市与江南文化路线。核对实际车站，不能认为同城各站可以互换；比较减少换酒店与减少每日通勤的取舍。这是原创规划框架，并非在售旅行套餐、固定用时或已确认预订。分配天数前先询问夜数、出行日期、兴趣及行动需求。",
+    "aliases": [],
+    "city_aliases": [
+      "Shanghai → Suzhou → Hangzhou",
+      "上海→苏州→杭州"
+    ],
+    "cities": [
+      "shanghai",
+      "suzhou",
+      "hangzhou"
+    ],
+    "sources": [
+      {
+        "name": "Official reference: Spend a day in Shanghai – Oriental Pearl Tower Line",
+        "url": "https://english.shanghai.gov.cn/en-Citywalk/20231226/c3c795cf933a43b7a2538a372980d24f.html"
+      },
+      {
+        "name": "Official reference: Travel in Shanghai",
+        "url": "https://english.shanghai.gov.cn/en-TravelinShanghai/"
+      },
+      {
+        "name": "Agency route inspiration: 北京pdf",
+        "url": "https://www.chinahighlights.com/image/pdf/shanghai-tour-planner.pdf"
+      },
+      {
+        "name": "Traveller experience: 21 Day Itinerary Check: Beijing, Xi'an, Chengdu, Chongqing, Yangshuo, Zhangjiajie, Shanghai",
+        "url": "https://www.reddit.com/r/chinatravel/comments/1vfebbs/21_day_itinerary_check_beijing_xian_chengdu/"
+      },
+      {
+        "name": "Official reference: Suzhou (China)",
+        "url": "https://whc.unesco.org/archive/advisory_body_evaluation/813bis.pdf"
+      },
+      {
+        "name": "Official reference: Classical Gardens of Suzhou - UNESCO World Heritage Centre",
+        "url": "https://whc.unesco.org/en/list/813/"
+      }
+    ],
+    "research": {
+      "source_ids": [
+        "SRC047",
+        "SRC048",
+        "SRC076",
+        "SRC020",
+        "SRC105",
+        "SRC230",
+        "SRC231",
+        "SRC232",
+        "SRC081",
+        "SRC082",
+        "SRC085",
+        "SRC087"
+      ],
+      "checked_on": "2026-10-28",
+      "content_type": "original_route_synthesis"
+    }
+  },
+  {
+    "id": "DEST_ROUTE_SICHUAN_CHONGQING",
+    "category": "multi_city_planning",
+    "question_en": "How can I plan the Chengdu → Leshan → Chongqing route?",
+    "question_zh": "如何安排成都→乐山→重庆路线？",
+    "answer_en": "Suggested route: Chengdu → Leshan → Chongqing. Decide whether Leshan is a day trip from Chengdu or an overnight stop before buying onward tickets. Separate the panda-base outing from a long intercity transfer. Chongqing needs allowance for stairs and layered streets. This is an original planning outline, not an advertised package, fixed travel duration or confirmed booking. Ask how many nights, travel dates, interests and mobility requirements before allocating days.",
+    "answer_zh": "建议路线：成都→乐山→重庆。购买后续车票前，决定乐山是成都往返一日游还是过夜停留。熊猫基地出游不要紧接长途跨城；重庆需考虑阶梯及立体道路。这是原创规划框架，并非在售旅行套餐、固定用时或已确认预订。分配天数前先询问夜数、出行日期、兴趣及行动需求。",
+    "aliases": [],
+    "city_aliases": [
+      "Chengdu → Leshan → Chongqing",
+      "成都→乐山→重庆"
+    ],
+    "cities": [
+      "chengdu",
+      "leshan",
+      "chongqing"
+    ],
+    "sources": [
+      {
+        "name": "Agency route inspiration: www.travelchinaguide.com",
+        "url": "https://www.travelchinaguide.com/package/chengdu-leshan-day-trip.htm"
+      },
+      {
+        "name": "Agency route inspiration: 1-Day Giant Pandas and Giant Buddha Tour",
+        "url": "https://www.chinahighlights.com/chengdu/tours/panda-buddha.htm"
+      },
+      {
+        "name": "Agency route inspiration: Plan Your Trip to Chengdu and Chongqing (with Itinerary)",
+        "url": "https://www.chinahighlights.com/plan/trip-to-chengdu-and-chongqing.htm"
+      },
+      {
+        "name": "Agency route inspiration: www.travelchinaguide.com",
+        "url": "https://www.travelchinaguide.com/package/chengdutour5.htm"
+      },
+      {
+        "name": "Official reference: Mount Emei and Leshan Giant Buddha 779",
+        "url": "https://whc.unesco.org/document/154254"
+      },
+      {
+        "name": "Official reference: Mount Emei and Leshan Giant Buddha 779",
+        "url": "https://whc.unesco.org/document/154252"
+      }
+    ],
+    "research": {
+      "source_ids": [
+        "SRC066",
+        "SRC069",
+        "SRC090",
+        "SRC188",
+        "SRC196",
+        "SRC197",
+        "SRC198",
+        "SRC083",
+        "SRC086",
+        "SRC088"
+      ],
+      "checked_on": "2026-10-28",
+      "content_type": "original_route_synthesis"
+    }
+  },
+  {
+    "id": "DEST_ROUTE_YUNNAN",
+    "category": "multi_city_planning",
+    "question_en": "How can I plan the Kunming → Dali → Lijiang → Shangri-La route?",
+    "question_zh": "如何安排昆明→大理→丽江→香格里拉路线？",
+    "answer_en": "Suggested route: Kunming → Dali → Lijiang → Shangri-La. Use a gradual, flexible route and confirm each operating transport leg. Increasing altitude may require extra rest or removing a mountain excursion; avoid promising that a fixed number of days makes anyone acclimatized. This is an original planning outline, not an advertised package, fixed travel duration or confirmed booking. Ask how many nights, travel dates, interests and mobility requirements before allocating days.",
+    "answer_zh": "建议路线：昆明→大理→丽江→香格里拉。采用渐进且灵活的路线并核实各段实际运营交通。海拔上升可能需要增加休息或取消雪山活动，不能保证固定天数就一定适应。这是原创规划框架，并非在售旅行套餐、固定用时或已确认预订。分配天数前先询问夜数、出行日期、兴趣及行动需求。",
+    "aliases": [],
+    "city_aliases": [
+      "Kunming → Dali → Lijiang → Shangri-La",
+      "昆明→大理→丽江→香格里拉",
+      "Yunnan",
+      "云南",
+      "雲南"
+    ],
+    "cities": [
+      "kunming",
+      "dali",
+      "lijiang",
+      "shangri"
+    ],
+    "sources": [
+      {
+        "name": "Agency route inspiration: Kunming Stone Forest - UNESCO Heritage of Karst Miracle",
+        "url": "https://www.chinadiscovery.com/yunnan/kunming/stone-forest.html"
+      },
+      {
+        "name": "Agency route inspiration: How to Plan a Trip to Kunming, Kunming Yunnan Trip Plan",
+        "url": "https://www.chinadiscovery.com/kunming-tours/how-to-plan.html"
+      },
+      {
+        "name": "Agency route inspiration: Stone Forest, Shilin, Kunming, Yunnan, China",
+        "url": "https://www.travelchinaguide.com/attraction/yunnan/kunming/stone_forest.htm"
+      },
+      {
+        "name": "Agency route inspiration: Kunming to Stone Forest, Shilin Stone Forest Transportation",
+        "url": "https://www.chinadiscovery.com/kunming-tours/transportation/kunming-to-stone-forest.html"
+      },
+      {
+        "name": "Agency route inspiration: Dali Ancient City, Dali Old Town, Dali Ancient Town",
+        "url": "https://www2.chinadiscovery.com/yunnan/dali/dali-old-town.html"
+      },
+      {
+        "name": "Agency route inspiration: www.travelchinaguide.com",
+        "url": "https://www.travelchinaguide.com/package/kunming-dali-lijiang-tour.htm"
+      }
+    ],
+    "research": {
+      "source_ids": [
+        "SRC095",
+        "SRC096",
+        "SRC098",
+        "SRC101",
+        "SRC108",
+        "SRC109",
+        "SRC111",
+        "SRC113",
+        "SRC106",
+        "SRC112",
+        "SRC117",
+        "SRC110"
+      ],
+      "checked_on": "2026-10-28",
+      "content_type": "original_route_synthesis"
+    }
+  },
+  {
+    "id": "DEST_ROUTE_GUILIN_YANGSHUO",
+    "category": "multi_city_planning",
+    "question_en": "How can I plan the Guilin → Yangshuo route?",
+    "question_zh": "如何安排桂林→阳朔路线？",
+    "answer_en": "Suggested route: Guilin → Yangshuo. Choose the river journey or road/rail approach based on current schedules and suitable piers/stations. Longji is a separate excursion rather than a small add-on between Guilin and Yangshuo. This is an original planning outline, not an advertised package, fixed travel duration or confirmed booking. Ask how many nights, travel dates, interests and mobility requirements before allocating days.",
+    "answer_zh": "建议路线：桂林→阳朔。根据实时运营及适用码头车站选择游船或公路铁路接驳。龙脊应单独安排，不是桂林与阳朔之间顺路的小景点。这是原创规划框架，并非在售旅行套餐、固定用时或已确认预订。分配天数前先询问夜数、出行日期、兴趣及行动需求。",
+    "aliases": [],
+    "city_aliases": [
+      "Guilin → Yangshuo",
+      "桂林→阳朔"
+    ],
+    "cities": [
+      "guilin",
+      "yangshuo"
+    ],
+    "sources": [
+      {
+        "name": "Agency route inspiration: Guilin Reed Flute Cave, Lu Di Yan, Guangxi",
+        "url": "https://www.travelchinaguide.com/attraction/guangxi/guilin/flute.htm"
+      },
+      {
+        "name": "Agency route inspiration: Guilin Travel Guide: Things to Do, How to Visit",
+        "url": "https://www.travelchinaguide.com/cityguides/guilin.htm"
+      },
+      {
+        "name": "Agency route inspiration: Reed Flute Cave Guilin - Facts, Formation, Location, Entrance Fee",
+        "url": "https://www.chinadiscovery.com/guangxi/guilin/reed-flute-cave.html"
+      },
+      {
+        "name": "Agency route inspiration: Yangshuo Yulong River, Jade Dragon River, Guangxi",
+        "url": "https://www.travelchinaguide.com/attraction/guangxi/yangshuo/yulong-river.htm"
+      },
+      {
+        "name": "Traveller experience: 21 Day Itinerary Check: Beijing, Xi'an, Chengdu, Chongqing, Yangshuo, Zhangjiajie, Shanghai",
+        "url": "https://www.reddit.com/r/chinatravel/comments/1vfebbs/21_day_itinerary_check_beijing_xian_chengdu/"
+      }
+    ],
+    "research": {
+      "source_ids": [
+        "SRC079",
+        "SRC084",
+        "SRC089",
+        "SRC080",
+        "SRC020"
+      ],
+      "checked_on": "2026-10-28",
+      "content_type": "original_route_synthesis"
+    }
+  },
+  {
+    "id": "DEST_ROUTE_GANSU_SILK",
+    "category": "multi_city_planning",
+    "question_en": "How can I plan the Zhangye → Dunhuang route?",
+    "question_zh": "如何安排张掖→敦煌路线？",
+    "answer_en": "Suggested route: Zhangye → Dunhuang. A focused Silk Road segment. Confirm exact rail connections and booking availability before choosing hotel nights. Danxia and Mogao require separate transfer and admission planning; preserve a disruption buffer. This is an original planning outline, not an advertised package, fixed travel duration or confirmed booking. Ask how many nights, travel dates, interests and mobility requirements before allocating days.",
+    "answer_zh": "建议路线：张掖→敦煌。聚焦河西丝路的一段。确定酒店夜数前核实具体铁路衔接及余票；丹霞和莫高窟分别规划接驳入场，并留出变化缓冲。这是原创规划框架，并非在售旅行套餐、固定用时或已确认预订。分配天数前先询问夜数、出行日期、兴趣及行动需求。",
+    "aliases": [],
+    "city_aliases": [
+      "Zhangye → Dunhuang",
+      "张掖→敦煌",
+      "Silk Road",
+      "丝绸之路",
+      "絲綢之路"
+    ],
+    "cities": [
+      "zhangye",
+      "dunhuang"
+    ],
+    "sources": [
+      {
+        "name": "Agency route inspiration: www.travelchinaguide.com",
+        "url": "https://www.travelchinaguide.com/package/zhangye-danxia.htm"
+      },
+      {
+        "name": "Agency route inspiration: Zhangye Danxia National Geological Park — Rainbow Mountains",
+        "url": "https://proxy-www.chinahighlights.com/zhangye/attraction/danxia-landform-geological-park.htm"
+      },
+      {
+        "name": "Agency route inspiration: How to Plan Zhangye Trip - Zhangye Itinerary Planner 2026/2027",
+        "url": "https://www.chinadiscovery.com/gansu-tours/zhangye-tours/plan-zhangye-trip.html"
+      },
+      {
+        "name": "Agency route inspiration: www.travelchinaguide.com",
+        "url": "https://www.travelchinaguide.com/package/dunhuangtour1.htm"
+      },
+      {
+        "name": "Agency route inspiration: Crescent Lake, Yueya Spring, Crescent Moon Lake, Dunhuang, China",
+        "url": "https://www.travelchinaguide.com/attraction/gansu/dunhuang/moon_lake.htm"
+      }
+    ],
+    "research": {
+      "source_ids": [
+        "SRC171",
+        "SRC177",
+        "SRC180",
+        "SRC176",
+        "SRC178"
+      ],
+      "checked_on": "2026-10-28",
+      "content_type": "original_route_synthesis"
+    }
+  },
+  {
+    "id": "DEST_ROUTE_XINJIANG",
+    "category": "multi_city_planning",
+    "question_en": "How can I plan the Urumqi → Turpan → Kashgar route?",
+    "question_zh": "如何安排乌鲁木齐→吐鲁番→喀什路线？",
+    "answer_en": "Suggested route: Urumqi → Turpan → Kashgar. These are substantial intercity legs, not casual day trips. Compare actual rail and flight options. Check local access and any excursion permit requirements through official or authorized channels; account for heat and time references. This is an original planning outline, not an advertised package, fixed travel duration or confirmed booking. Ask how many nights, travel dates, interests and mobility requirements before allocating days.",
+    "answer_zh": "建议路线：乌鲁木齐→吐鲁番→喀什。这些属于长距离跨城，不能当作随意一日往返。比较实际火车与航班；通过官方或授权渠道核实当地通行及远郊许可，考虑炎热及时间口径。这是原创规划框架，并非在售旅行套餐、固定用时或已确认预订。分配天数前先询问夜数、出行日期、兴趣及行动需求。",
+    "aliases": [],
+    "city_aliases": [
+      "Urumqi → Turpan → Kashgar",
+      "乌鲁木齐→吐鲁番→喀什"
+    ],
+    "cities": [
+      "urumqi",
+      "turpan",
+      "kashgar"
+    ],
+    "sources": [
+      {
+        "name": "Agency route inspiration: Tainchi Lake - Urumqi Heavenly Lake of Tianshan Mountains",
+        "url": "https://www2.chinadiscovery.com/xinjiang/urumqi/tianchi-lake.html"
+      },
+      {
+        "name": "Agency route inspiration: Xinjiang Regional Museum: History, Culture & Mummies",
+        "url": "https://www.chinadiscovery.com/xinjiang/urumqi/xinjiang-museum.html"
+      },
+      {
+        "name": "Agency route inspiration: Heavenly Lake, Tian Chi Lake, Urumqi, Xinjiang",
+        "url": "https://www.travelchinaguide.com/attraction/xinjiang/urumqi/tianchi.htm"
+      },
+      {
+        "name": "Official reference: China - UNESCO World Heritage Convention",
+        "url": "https://whc.unesco.org/en/statesparties/cn/"
+      }
+    ],
+    "research": {
+      "source_ids": [
+        "SRC169",
+        "SRC170",
+        "SRC175",
+        "SRC045"
+      ],
+      "checked_on": "2026-10-28",
+      "content_type": "original_route_synthesis"
+    }
+  },
+  {
+    "id": "DEST_ROUTE_SHANXI_HERITAGE",
+    "category": "multi_city_planning",
+    "question_en": "How can I plan the Datong → Pingyao → Xian route?",
+    "question_zh": "如何安排大同→平遥→西安路线？",
+    "answer_en": "Suggested route: Datong → Pingyao → Xian. A heritage-focused route whose station locations matter. Compare published connections rather than assuming a direct train. Keep grotto and temple excursions separate from tight onward departures. This is an original planning outline, not an advertised package, fixed travel duration or confirmed booking. Ask how many nights, travel dates, interests and mobility requirements before allocating days.",
+    "answer_zh": "建议路线：大同→平遥→西安。以文化遗产为主题，需重视车站位置。比较已发布连接，不要假设一定有直达车；石窟及寺院远郊行程避免紧接后续发车。这是原创规划框架，并非在售旅行套餐、固定用时或已确认预订。分配天数前先询问夜数、出行日期、兴趣及行动需求。",
+    "aliases": [],
+    "city_aliases": [
+      "Datong → Pingyao → Xian",
+      "大同→平遥→西安"
+    ],
+    "cities": [
+      "datong",
+      "pingyao",
+      "xian"
+    ],
+    "sources": [
+      {
+        "name": "Agency route inspiration: www.travelchinaguide.com",
+        "url": "https://www.travelchinaguide.com/package/datong/day-trip.htm"
+      },
+      {
+        "name": "Agency route inspiration: Yungang Grottoes Guide: Best Caves, Tips & Itinerary",
+        "url": "https://www.chinahighlights.com/datong/attraction/yungang-grottoes.htm"
+      },
+      {
+        "name": "Agency route inspiration: www.travelchinaguide.com",
+        "url": "https://www.travelchinaguide.com/package/pingyao-datong.htm"
+      },
+      {
+        "name": "Agency route inspiration: Hanging Temple: Travel Guide for Hengshan Hanging Temple",
+        "url": "https://www.chinadiscovery.com/shanxi/datong/hanging-temple.html"
+      },
+      {
+        "name": "Official reference: China - Ancient City of Ping Yao",
+        "url": "https://whc.unesco.org/document/221126"
+      },
+      {
+        "name": "Agency route inspiration: www.travelchinaguide.com",
+        "url": "https://www.travelchinaguide.com/package/pingyao.htm"
+      }
+    ],
+    "research": {
+      "source_ids": [
+        "SRC155",
+        "SRC158",
+        "SRC159",
+        "SRC161",
+        "SRC163",
+        "SRC153",
+        "SRC064",
+        "SRC065",
+        "SRC067",
+        "SRC068"
+      ],
+      "checked_on": "2026-10-28",
+      "content_type": "original_route_synthesis"
+    }
+  },
+  {
+    "id": "DEST_ROUTE_FUJIAN_COAST",
+    "category": "multi_city_planning",
+    "question_en": "How can I plan the Xiamen → Quanzhou route?",
+    "question_zh": "如何安排厦门→泉州路线？",
+    "answer_en": "Suggested route: Xiamen → Quanzhou. A coastal and maritime-history pairing. Check Gulangyu ferry arrangements independently of the intercity train. In Quanzhou, respect living religious sites and choose a manageable heritage walking area. This is an original planning outline, not an advertised package, fixed travel duration or confirmed booking. Ask how many nights, travel dates, interests and mobility requirements before allocating days.",
+    "answer_zh": "建议路线：厦门→泉州。海滨及海丝历史组合。鼓浪屿轮渡与跨城火车分别核实；泉州尊重仍在使用的宗教场所，选择步行能力可承受的文化街区。这是原创规划框架，并非在售旅行套餐、固定用时或已确认预订。分配天数前先询问夜数、出行日期、兴趣及行动需求。",
+    "aliases": [],
+    "city_aliases": [
+      "Xiamen → Quanzhou",
+      "厦门→泉州"
+    ],
+    "cities": [
+      "xiamen",
+      "quanzhou"
+    ],
+    "sources": [
+      {
+        "name": "Agency route inspiration: www.travelchinaguide.com",
+        "url": "https://www.travelchinaguide.com/package/xiamen/day-trip.htm"
+      },
+      {
+        "name": "Agency route inspiration: Xiamen Gulangyu Island, Fujian, China",
+        "url": "https://www.travelchinaguide.com/attraction/fujian/xiamen/gulang.htm"
+      },
+      {
+        "name": "Agency route inspiration: www.travelchinaguide.com",
+        "url": "https://www.travelchinaguide.com/package/xiamen/city-tour.htm"
+      },
+      {
+        "name": "Agency route inspiration: 3-Day Xiamen and Tulou Tour: Exotic Islands and Castles",
+        "url": "https://www.chinahighlights.com/xiamen/tours/xiamen-tulou-relaxation.htm"
+      },
+      {
+        "name": "Agency route inspiration: Kaiyuan Temple Quanzhou, Visit Kaiyuan Monastery, China",
+        "url": "https://www.chinadiscovery.com/fujian/quanzhou/kaiyuan-temple.html"
+      },
+      {
+        "name": "Agency route inspiration: Visit Quanzhou: Ultimate Quanzhou Travel Guide 2026",
+        "url": "https://www.chinadiscovery.com/fujian/quanzhou.html"
+      }
+    ],
+    "research": {
+      "source_ids": [
+        "SRC122",
+        "SRC123",
+        "SRC126",
+        "SRC127",
+        "SRC138",
+        "SRC144"
+      ],
+      "checked_on": "2026-10-28",
+      "content_type": "original_route_synthesis"
+    }
+  },
+  {
+    "id": "DEST_ROUTE_GREATER_BAY",
+    "category": "multi_city_planning",
+    "question_en": "How can I plan the Guangzhou → Shenzhen → Hong Kong → Macao route?",
+    "question_zh": "如何安排广州→深圳→香港→澳门路线？",
+    "answer_en": "Suggested route: Guangzhou → Shenzhen → Hong Kong → Macao. A cross-boundary route, not one uniform transport or entry system. Verify each jurisdiction’s entry eligibility, chosen border port, cross-border services and baggage requirements before booking. Do not promise unrestricted onward access. This is an original planning outline, not an advertised package, fixed travel duration or confirmed booking. Ask how many nights, travel dates, interests and mobility requirements before allocating days.",
+    "answer_zh": "建议路线：广州→深圳→香港→澳门。这是跨境路线，不能套用同一套交通和入境规则。预订前逐段核实各地入境资格、所选口岸、跨境服务及行李要求，不能保证无条件通行。这是原创规划框架，并非在售旅行套餐、固定用时或已确认预订。分配天数前先询问夜数、出行日期、兴趣及行动需求。",
+    "aliases": [],
+    "city_aliases": [
+      "Guangzhou → Shenzhen → Hong Kong → Macao",
+      "广州→深圳→香港→澳门",
+      "Greater Bay",
+      "大湾区",
+      "大灣區"
+    ],
+    "cities": [
+      "guangzhou",
+      "shenzhen",
+      "hongkong",
+      "macau"
+    ],
+    "sources": [
+      {
+        "name": "Agency route inspiration: Guangzhou Tourist Attractions: Things to Do, Sightseeing List",
+        "url": "https://www.travelchinaguide.com/attraction/guangdong/guangzhou/"
+      },
+      {
+        "name": "Agency route inspiration: Top 10 Things to Do in Guangzhou, Best Places to Visit, Must-sees",
+        "url": "https://www.travelchinaguide.com/cityguides/guangdong/guangzhou/top-10-things-to-do.htm"
+      },
+      {
+        "name": "Agency route inspiration: 12 Best Places to Visit in Guangzhou for First-time Visitors",
+        "url": "https://www.travelchinaguide.com/package/guangzhou/places-to-visit.htm"
+      },
+      {
+        "name": "Agency route inspiration: www.travelchinaguide.com",
+        "url": "https://www.travelchinaguide.com/package/guangzhou.htm"
+      },
+      {
+        "name": "Agency route inspiration: Dapeng New Area Shenzhen China: A Beautiful Coastal District",
+        "url": "https://www.travelchinaguide.com/cityguides/guangdong/shenzhen/dapeng-new-area.htm"
+      },
+      {
+        "name": "Agency route inspiration: www.travelchinaguide.com",
+        "url": "https://www.travelchinaguide.com/package/hongkong/macau.htm"
+      }
+    ],
+    "research": {
+      "source_ids": [
+        "SRC216",
+        "SRC217",
+        "SRC219",
+        "SRC223",
+        "SRC132",
+        "SRC125",
+        "SRC130",
+        "SRC134",
+        "SRC124",
+        "SRC129"
+      ],
+      "checked_on": "2026-10-28",
+      "content_type": "original_route_synthesis"
+    }
+  },
+  {
+    "id": "DEST_ROUTE_MOUNTAINS",
+    "category": "multi_city_planning",
+    "question_en": "How can I plan the Shanghai → Huangshan → Hangzhou route?",
+    "question_zh": "如何安排上海→黄山→杭州路线？",
+    "answer_en": "Suggested route: Shanghai → Huangshan → Hangzhou. Choose the Huangshan city base, mountain lodging or village base explicitly. Plan transfers to the mountain separately from the high-speed rail arrival. Mountain weather can require swapping sightseeing days. This is an original planning outline, not an advertised package, fixed travel duration or confirmed booking. Ask how many nights, travel dates, interests and mobility requirements before allocating days.",
+    "answer_zh": "建议路线：上海→黄山→杭州。明确住黄山市区、山上还是村落。高铁抵达后至景区交通单独安排；山区天气可能要求互换游览日。这是原创规划框架，并非在售旅行套餐、固定用时或已确认预订。分配天数前先询问夜数、出行日期、兴趣及行动需求。",
+    "aliases": [],
+    "city_aliases": [
+      "Shanghai → Huangshan → Hangzhou",
+      "上海→黄山→杭州"
+    ],
+    "cities": [
+      "shanghai",
+      "huangshan",
+      "hangzhou"
+    ],
+    "sources": [
+      {
+        "name": "Official reference: Spend a day in Shanghai – Oriental Pearl Tower Line",
+        "url": "https://english.shanghai.gov.cn/en-Citywalk/20231226/c3c795cf933a43b7a2538a372980d24f.html"
+      },
+      {
+        "name": "Official reference: Travel in Shanghai",
+        "url": "https://english.shanghai.gov.cn/en-TravelinShanghai/"
+      },
+      {
+        "name": "Agency route inspiration: 北京pdf",
+        "url": "https://www.chinahighlights.com/image/pdf/shanghai-tour-planner.pdf"
+      },
+      {
+        "name": "Traveller experience: 21 Day Itinerary Check: Beijing, Xi'an, Chengdu, Chongqing, Yangshuo, Zhangjiajie, Shanghai",
+        "url": "https://www.reddit.com/r/chinatravel/comments/1vfebbs/21_day_itinerary_check_beijing_xian_chengdu/"
+      },
+      {
+        "name": "Agency route inspiration: Hongcun to Xidi & Xidi to Hongcun: Bus, Driving 2026",
+        "url": "https://www.chinadiscovery.com/huangshan-tours/transportation/hongcun-to-xidi.html"
+      },
+      {
+        "name": "Agency route inspiration: 4 Days Huangshan Hongcun Xidi Tour",
+        "url": "https://www.chinadiscovery.com/huangshan-tours/huangshan-hongcun-xidi-tour.html"
+      }
+    ],
+    "research": {
+      "source_ids": [
+        "SRC047",
+        "SRC048",
+        "SRC076",
+        "SRC020",
+        "SRC094",
+        "SRC099",
+        "SRC100",
+        "SRC102",
+        "SRC081",
+        "SRC082",
+        "SRC085",
+        "SRC087"
+      ],
+      "checked_on": "2026-10-28",
+      "content_type": "original_route_synthesis"
+    }
+  },
+  {
+    "id": "DEST_ROUTE_HAINAN",
+    "category": "multi_city_planning",
+    "question_en": "How can I plan the Haikou → Sanya route?",
+    "question_zh": "如何安排海口→三亚路线？",
+    "answer_en": "Suggested route: Haikou → Sanya. Compare exact island rail stations and hotel transfers rather than only train time. Choose a beach base according to interests and current conditions. Verify separate mainland-island transport and entry requirements. This is an original planning outline, not an advertised package, fixed travel duration or confirmed booking. Ask how many nights, travel dates, interests and mobility requirements before allocating days.",
+    "answer_zh": "建议路线：海口→三亚。比较岛内具体车站与酒店接驳，不能只看火车运行时间。按兴趣及实时条件选择海湾住宿，另行核实内地与海岛交通及入境要求。这是原创规划框架，并非在售旅行套餐、固定用时或已确认预订。分配天数前先询问夜数、出行日期、兴趣及行动需求。",
+    "aliases": [],
+    "city_aliases": [
+      "Haikou → Sanya",
+      "海口→三亚",
+      "Hainan",
+      "海南"
+    ],
+    "cities": [
+      "haikou",
+      "sanya"
+    ],
+    "sources": [
+      {
+        "name": "Agency route inspiration: Haikou Hainan: A Coastal City with Beaches and Seaside Resorts",
+        "url": "https://www.travelchinaguide.com/cityguides/hainan/haikou/"
+      },
+      {
+        "name": "Agency route inspiration: Haikou Attractions: Points of Interest, Things to Do",
+        "url": "https://www.travelchinaguide.com/attraction/hainan/haikou/"
+      },
+      {
+        "name": "Agency route inspiration: www.travelchinaguide.com",
+        "url": "https://www.travelchinaguide.com/map/haikou/"
+      },
+      {
+        "name": "Agency route inspiration: Sanya Yalong Bay, Asian Dragon Bay, Hainan",
+        "url": "https://www.travelchinaguide.com/attraction/hainan/sanya/yalongwan.htm"
+      },
+      {
+        "name": "Agency route inspiration: Sanya Bay, Hainan",
+        "url": "https://www.travelchinaguide.com/attraction/hainan/sanya/bay.htm"
+      }
+    ],
+    "research": {
+      "source_ids": [
+        "SRC214",
+        "SRC215",
+        "SRC218",
+        "SRC203",
+        "SRC206"
+      ],
+      "checked_on": "2026-10-28",
+      "content_type": "original_route_synthesis"
+    }
+  }
+]
