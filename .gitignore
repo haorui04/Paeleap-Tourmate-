@@ -8,3 +8,4 @@ node_modules/
 .paeleap/
 reports/*
 !reports/security-remediation-summary.json
+.vercel/
