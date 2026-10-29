@@ -12,6 +12,8 @@ The white-and-blue travel interface includes reduced-motion-aware response anima
 
 TourMate also supports [travel image and document attachments](docs/TRAVEL-ATTACHMENTS.md): images, PDFs, DOCX, TXT and Markdown. Image/PDF perception uses a separately configured vision model; DeepSeek remains the main answer model. Files are request-only references and do not train or change the persona.
 
+Little De Rabbit also supports [museum artifact identification from images, labels and document descriptions](docs/MUSEUM-ATTACHMENTS.md). Matches are tentative and tied to the selected museum's published references; uncertain images ask for a clearer label. Raw files are not saved in Supabase.
+
 ## Local setup
 
 Requires Node.js 22.13 or newer, including built-in `node:sqlite` support.

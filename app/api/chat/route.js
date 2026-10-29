@@ -16,6 +16,7 @@ import { isWeatherRequest, isWeatherFollowup, getWeatherReply } from "../../../l
 import { readAttachmentRequest } from "../../../lib/attachments/request.js";
 import { AttachmentError, prepareAttachment } from "../../../lib/attachments/files.js";
 import { answerAttachment, privateImageRequest, attachmentRefusal } from "../../../lib/attachments/analyze.js";
+import { identifyMuseumArtifact, isArtifactIdentificationRequest, museumAttachmentRefusal } from "../../../lib/attachments/museum.js";
 import { attachmentPrompt, attachmentTranscript, MAX_ATTACHMENT_MESSAGE } from "../../../lib/attachments/shared.js";
 
 export const runtime = "nodejs";
@@ -100,7 +101,7 @@ export async function POST(request) {
     if (!language) return json({ error: "Language must be en or zh" }, 400);
     if (file) {
       if (body.message != null && (typeof body.message !== 'string' || body.message.length > MAX_ATTACHMENT_MESSAGE)) return json({error:'Attachment message is too long'},400);
-      body.message = attachmentPrompt(body.message, language);
+      body.message = attachmentPrompt(body.message, language, body.personaId);
     }
     const personaId = body.personaId ?? DEFAULT_PERSONA_ID;
     if (typeof personaId !== "string" || !/^[a-z][a-z0-9-]{1,63}$/.test(personaId)) {
@@ -169,7 +170,10 @@ export async function POST(request) {
     if (file && classified.status === 'allowed') {
       // Parse only after Auth, quota, conversation ownership and persona checks.
       // Files are per-request evidence; raw bytes/OCR are never stored in chats.
-      const attached = persona.id !== DEFAULT_PERSONA_ID ? {reply:language === 'zh' ? '当前场馆导览未启用附件。请使用场馆已批准的资料提问。' : 'Attachments are not enabled for this venue guide. Please ask about its approved visitor information.',status:'allowed',mode:'attachment_unavailable',sources:[]}
+      const attached = persona.id === DESHOU_PERSONA_ID
+        ? privateImageRequest(body.message) ? museumAttachmentRefusal(language)
+          : await identifyMuseumArtifact({attachment:await prepareAttachment(file),message:body.message,language,persona})
+        : persona.id !== DEFAULT_PERSONA_ID ? {reply:language === 'zh' ? '当前场馆导览未启用附件。请使用场馆已批准的资料提问。' : 'Attachments are not enabled for this venue guide. Please ask about its approved visitor information.',status:'allowed',mode:'attachment_unavailable',sources:[]}
         : privateImageRequest(body.message) ? attachmentRefusal(language)
         : await answerAttachment({attachment:await prepareAttachment(file),message:body.message,language});
       verified = {reply:attached.reply,status:attached.status};
@@ -177,6 +181,10 @@ export async function POST(request) {
     } else if (personaIdentity) {
       // Identity is public administrator data, never a visitor/model-authored role.
       verified = { reply: personaIdentityReply(persona, language), status: "allowed" };
+    } else if (persona.id === DESHOU_PERSONA_ID && classified.status === 'allowed' && isArtifactIdentificationRequest(body.message)) {
+      const identified = await identifyMuseumArtifact({message:body.message,language,persona});
+      verified={reply:identified.reply,status:identified.status};
+      generationUsed=true;generationMode=identified.mode;generationSources=identified.sources;
     } else if (classified.status === "allowed" && (isWeatherRequest(body.message) || isWeatherFollowup(body.message, history))) {
       // The tool runs only after Auth, quota, ownership and input/persona checks.
       // Museum profiles cannot use global city weather to escape venue scope.
@@ -253,7 +261,7 @@ export async function POST(request) {
       }
     }
     const status = verified.status;
-    const userContent = file ? attachmentTranscript(body.message, file.name, language) : body.message.trim();
+    const userContent = file ? attachmentTranscript(body.message, file.name, language, persona.id) : body.message.trim();
     const sources = status === "allowed" ? (generationUsed ? generationSources : (faq?.sources || [])) : [];
     if (!demo) {
       await storeExchange(user, conversationId, userContent, verified.reply, { id: persona.id, version: persona.version });

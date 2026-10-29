@@ -138,7 +138,7 @@ test('hostile generated output is rejected rather than rendered',async()=>{
   }
 });
 
-function apiFixture(t,{quota=true,owned=true,binding=true}={}){
+function apiFixture(t,{quota=true,owned=true,binding=true,profile=venue}={}){
   const values={...environment,NODE_ENV:'development',ALLOW_LOCAL_DEMO:'false',AI_MOCK_MODE:'false',SUPABASE_URL:'https://db-attachments.invalid',SUPABASE_PUBLISHABLE_KEY:'SYNTHETIC-PUBLIC',SUPABASE_SERVICE_ROLE_KEY:'SYNTHETIC-SERVICE'};
   const saved=Object.fromEntries(Object.keys(values).map(key=>[key,process.env[key]]));Object.assign(process.env,values);
   t.after(()=>{for(const[key,value]of Object.entries(saved))value===undefined?delete process.env[key]:process.env[key]=value;});
@@ -150,7 +150,7 @@ function apiFixture(t,{quota=true,owned=true,binding=true}={}){
     if(url.pathname==='/auth/v1/user')return Response.json({id:'11111111-1111-4111-8111-111111111111'});
     if(url.pathname.endsWith('consume_chat_quota'))return Response.json(quota);
     if(url.pathname.endsWith('store_persona_exchange')){writes.push(JSON.parse(init.body));return Response.json(true);}
-    if(url.pathname==='/rest/v1/persona_packages')return Response.json([{payload:venue}]);
+    if(url.pathname==='/rest/v1/persona_packages')return Response.json([{payload:profile}]);
     if(url.pathname==='/rest/v1/conversations')return Response.json(owned&&(binding||!url.searchParams.has('persona_id'))?[{id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'}]:[]);
     if(url.pathname==='/rest/v1/messages')return Response.json([]);
     throw new Error('Unexpected fixture route');
@@ -170,8 +170,9 @@ for(const[name,options,fields,expected]of[
   const fixture=apiFixture(t,options);const response=await POST(multipart(image(),fields,name!=='unauthenticated'));
   assert.equal(response.status,expected);assert.equal(fixture.writes.length,0);assert.ok(fixture.calls.every(path=>path.startsWith('db-attachments.invalid')));
 });
-test('museum scope cannot be expanded with a global image attachment',async t=>{
-  const fixture=apiFixture(t);const response=await POST(multipart(image(),{personaId:venue.id}));const body=await response.json();
+test('a different museum cannot opt into the Deshou attachment path',async t=>{
+  const profile={...venue,id:'another-museum'};
+  const fixture=apiFixture(t,{profile});const response=await POST(multipart(image(),{personaId:profile.id}));const body=await response.json();
   assert.equal(response.status,200);assert.equal(body.ai.mode,'attachment_unavailable');assert.ok(fixture.calls.every(path=>path.startsWith('db-attachments.invalid')));
 });
 test('JSON cannot smuggle an unvalidated attachment object',async()=>{

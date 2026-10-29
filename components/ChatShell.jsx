@@ -362,7 +362,7 @@ export default function ChatShell() {
   const pending = activeTrip?.pending === true;
   const historyUnavailable = activeTrip?.loaded === false;
   const attachment = attachmentDrafts[activeTrip?.id] || null;
-  const attachmentEnabled = persona?.id === DEFAULT_PERSONA_ID && service.data?.attachmentsConfigured === true;
+  const attachmentEnabled = [DEFAULT_PERSONA_ID, "little-de-rabbit"].includes(persona?.id) && service.data?.attachmentsConfigured === true;
   const messageLimit = attachment ? MAX_ATTACHMENT_MESSAGE : MAX_MESSAGE_LENGTH;
 
   useEffect(() => { setDeleteTarget(null); setDeleteError(""); setAnnouncement(""); setAttachmentDrafts({}); }, [chatIdentity, personaId]);
@@ -496,11 +496,11 @@ export default function ChatShell() {
 
   async function submitMessage(event) {
     event.preventDefault();
-    const message = attachment ? attachmentPrompt(draft,language) : draft.trim();
+    const message = attachment ? attachmentPrompt(draft,language,personaId) : draft.trim();
     if (!personaReady || !activeTrip || historyUnavailable || !message || pending || attachmentBusy || requestsRef.current.has(activeTrip.id) || message.length > messageLimit) return;
     const tripId = activeTrip.id;
     const selectedFile = attachment;
-    const userContent = selectedFile ? attachmentTranscript(message,selectedFile.name,language) : message;
+    const userContent = selectedFile ? attachmentTranscript(message,selectedFile.name,language,personaId) : message;
     let conversationId = activeTrip.conversationId;
     const previousMessages = activeTrip.messages;
 
@@ -768,7 +768,7 @@ export default function ChatShell() {
                   placeholder={persona?.id === DEFAULT_PERSONA_ID ? t.placeholder : language === "zh" ? `向${personaName}询问场馆相关问题…` : `Ask ${personaName} about this venue…`} value={draft} onChange={(event) => setDraft(event.target.value)}
                   onInput={resizeTextarea} onKeyDown={onComposerKeyDown} disabled={!personaReady || pending || historyUnavailable || attachmentBusy} />
                 <div className="composer-bottom">
-                  {attachmentEnabled && <AttachmentPicker key={`${chatIdentity}-${personaId}-${activeTrip?.id}`} file={attachment} language={language}
+                  {attachmentEnabled && <AttachmentPicker key={`${chatIdentity}-${personaId}-${activeTrip?.id}`} file={attachment} language={language} museum={museum}
                     disabled={pending || attachmentBusy || historyUnavailable} onBusy={setAttachmentBusy} onError={setError}
                     onChange={file=>{if(file && draft.length>MAX_ATTACHMENT_MESSAGE){setError(language==='zh'?'附带文件时，请将问题缩短至 1,300 字符。':'Shorten your question to 1,300 characters when attaching a file.');return;} setAttachmentDrafts(previous=>({...previous,[activeTrip.id]:file}));}}/>}
                   <span className={`character-count ${draft.length > messageLimit-150 ? "near-limit" : ""}`}>{draft.length}/{messageLimit}</span>
