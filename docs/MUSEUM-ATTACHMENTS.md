@@ -8,6 +8,22 @@ Limits: documents and the final uploaded file are at most 2 MB; images may be at
 
 ## How identification works
 
+### Direct Gemini image identity, then database lookup
+
+Set `AI_IMAGE_IDENTIFICATION_PROVIDER=gemini_free`, `AI_IMAGE_IDENTIFICATION_MODEL=gemini-3.6-flash`, and a server-only `GEMINI_API_KEY` from Google AI Studio. Keep the key's Google project on its **Free** plan with billing disabled. The application cannot determine a project's billing plan from an API key. Both approved model IDs (`gemini-3.6-flash` and `gemini-3.5-flash-lite`) currently offer a Google Developer API Free tier, subject to quotas and account/region eligibility. Free-tier inputs may be used to improve Google's products; do not submit confidential files. Provider prices and availability may change.
+
+Museum images bypass the older observation/feature-description and Commons-search flows below. The normalized JPEG goes directly to Google's fixed endpoint. Stage one receives no database records, candidate suggestions, filenames or chat history. It returns only bilingual candidate names and a bounded decision/confidence. This is learned model knowledge, not a queryable model database or independent verification.
+
+Stage two runs locally on the server, comparing the bilingual names with artifact names in the conversation's published museum package. It requires a unique specific Chinese name supported by the English name, or multiple distinguishing English terms with a clear lead over other records. It compares names, never historical answer text. Generic names, conflicting bilingual names and tied matches cannot force a record selection. The model cannot return a record ID or write a catalogue description. For a match, the server returns **artifact name + published database description + reference links** (`museum_identity_match`). Otherwise it returns **candidate name + not matched in the current museum database** (`museum_identity_not_found`). Uncertain identification is reported separately and never asserted to be absent from the museum. Conservative name matching can miss an unrecorded synonym; a miss is not proof of absence.
+
+No scene description, generated historical narrative or model-invented catalogue entry is shown on this route. Input checks run before inference; image instructions remain untrusted; bilingual names and the final server-rendered reply are checked again before output. Each identification normally makes **one** Gemini request using the dedicated key; database-name matching needs no further AI request. A transient HTTP 503 receives one bounded retry on the same free model. Authentication, quota, permission, malformed and timeout errors are never retried. The image route never uses the main chat/Gateway key, a paid-only model, Google Cloud Vision or external image search. A missing key, invalid model, exhausted quota or persistent provider outage stops the route without a paid fallback. Original image bytes are not saved in chat history. PDF/document handling and the separately configured main text-chat provider are unchanged. Older flows remain available only when both direct-image provider and model settings are absent.
+
+`tests/gemini-image-identity.test.mjs` verifies name-first routing, both database outcomes, bilingual output, credential isolation, approved models, no paid/scene fallback, unsafe inputs, invalid identities, unknown record IDs, low confidence, and provider/quota failures. Live tests and fixtures are separate evidence.
+
+References: [Gemini Free-tier pricing](https://ai.google.dev/gemini-api/docs/pricing), [Google's compatible API](https://ai.google.dev/gemini-api/docs/openai), [region eligibility](https://ai.google.dev/gemini-api/docs/available-regions).
+
+### Earlier observation/reference route (used only without the direct-image setting)
+
 1. Authenticate, enforce quota, verify conversation ownership and resolve its published persona version before decoding or analyzing a file.
 2. The separately configured image-capable model reads visible features and exhibit-label text from images or PDFs. DeepSeek remains the main text model; binary images are never sent to a text-only DeepSeek endpoint. DOCX/TXT/Markdown use bounded text extraction.
 3. Treat the attachment, OCR and visitor description as untrusted evidence. The existing prompt-injection, harmful-request and privacy checks still apply. Redact detected personal identifiers throughout extracted text before forwarding it for matching. Reject requests to identify real people or locate private homes.

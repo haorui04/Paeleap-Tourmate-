@@ -126,13 +126,18 @@ test('provider outages produce a specific unavailable state without inventing a 
   assert.equal(result.mode,'museum_attachment_unavailable');assert.deepEqual(result.sources,[]);
 });
 
-function fixture(t,{quota=true,owned=true,binding=true}={}){
-  const changes={...env,NODE_ENV:'test',ALLOW_LOCAL_DEMO:'false',AI_MOCK_MODE:'false',SUPABASE_URL:'https://museum-db.invalid',SUPABASE_PUBLISHABLE_KEY:'SYNTHETIC-PUBLIC',SUPABASE_SERVICE_ROLE_KEY:'SYNTHETIC-SERVICE'};
+function fixture(t,{quota=true,owned=true,binding=true,gemini=false}={}){
+  const changes={...env,...(gemini?{AI_IMAGE_IDENTIFICATION_PROVIDER:'gemini_free',AI_IMAGE_IDENTIFICATION_MODEL:'gemini-3.6-flash',GEMINI_API_KEY:'SYNTHETIC-GEMINI'}:{}),NODE_ENV:'test',ALLOW_LOCAL_DEMO:'false',AI_MOCK_MODE:'false',SUPABASE_URL:'https://museum-db.invalid',SUPABASE_PUBLISHABLE_KEY:'SYNTHETIC-PUBLIC',SUPABASE_SERVICE_ROLE_KEY:'SYNTHETIC-SERVICE'};
   const before=Object.fromEntries(Object.keys(changes).map(key=>[key,process.env[key]]));Object.assign(process.env,changes);
   t.after(()=>{for(const[key,value]of Object.entries(before))value===undefined?delete process.env[key]:process.env[key]=value;});
   let modelCalls=0;const writes=[];
   t.mock.method(globalThis,'fetch',async(address,init={})=>{
     const url=new URL(address);
+    if(url.hostname==='generativelanguage.googleapis.com'){
+      modelCalls++;assert.equal(init.headers.Authorization,'Bearer SYNTHETIC-GEMINI');
+      const body=JSON.parse(init.body);assert.equal(body.model,'gemini-3.6-flash');
+      return response(modelCalls===1?JSON.stringify({decision:'identified',name_en:'Longquan seven-tube hexagonal flower vessel',name_zh:'龙泉窑青釉六方七管占景盆',confidence:'high'}):match('label',['龙泉窑青釉六方七管占景盆']));
+    }
     if(url.hostname==='museum-model.invalid'){modelCalls++;return response(match('label',[label]));}
     assert.equal(url.hostname,'museum-db.invalid');
     if(url.pathname==='/auth/v1/user')return Response.json({id:'11111111-1111-4111-8111-111111111111'});
@@ -154,6 +159,17 @@ test('the authenticated API recognizes a document and persists only the prompt a
   assert.equal(f.modelCalls(),1);assert.equal(f.writes.length,1);
   const user=f.writes[0].p_user_message;assert.match(user,/label.txt/);assert.doesNotMatch(user,/六方七管占景盆|base64/);
   assert.equal(body.persona.id,persona.id);
+});
+test('authenticated image upload reaches Gemini and local lookup and stores no image bytes or key',async t=>{
+  const f=fixture(t,{gemini:true});
+  const bytes=await sharp({create:{width:32,height:32,channels:3,background:'white'}}).jpeg().toBuffer();
+  const form=new FormData();form.set('file',new File([bytes],'artifact.jpg',{type:'image/jpeg'}));
+  form.set('personaId',persona.id);form.set('language','en');form.set('message','What artifact is this?');
+  const request=new Request('https://museum.invalid/api/chat',{method:'POST',headers:{Authorization:'Bearer SYNTHETIC-VISITOR'},body:form});
+  const res=await POST(request);const body=await res.json();assert.equal(res.status,200);assert.equal(body.ai.mode,'museum_identity_match');
+  assert.equal(f.modelCalls(),1);assert.equal(f.writes.length,1);assert.match(f.writes[0].p_user_message,/artifact.jpg/);
+  assert.doesNotMatch(JSON.stringify(f.writes),/SYNTHETIC-GEMINI|base64/);assert.doesNotMatch(JSON.stringify(body),/SYNTHETIC-GEMINI|base64/);
+  assert.equal(parseChatResponse(body).ai.mode,'museum_identity_match');assert.ok(body.reply.includes(persona.knowledge.find(row=>row.id==='DS005').answer_en));
 });
 for(const[name,options,changes,status]of[
   ['authentication',{}, {token:false},401],['quota',{quota:false},{},429],

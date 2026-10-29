@@ -1,6 +1,7 @@
 import { hasConfiguredValue, localDemoEnabled, mockAiEnabled, resolveAiApiKey } from "../../../lib/config.js";
 import { FAQ_BANK_SIZE } from '../../../lib/knowledge-config.js';
 import { museumWebSearchConfigured, museumImageSearchProvider } from '../../../lib/attachments/museum-search.js';
+import { geminiImageConfigured } from '../../../lib/attachments/image-identify.js';
 
 export const runtime = "nodejs";
 
@@ -20,6 +21,7 @@ export async function GET() {
     attachmentsConfigured: [process.env.AI_BASE_URL, resolveAiApiKey(), process.env.AI_MODEL, process.env.AI_VISION_MODEL].every(hasConfiguredValue),
     museumWebImageSearchConfigured: museumWebSearchConfigured(),
     museumImageSearchProvider: museumImageSearchProvider(),
+    directImageIdentityConfigured: geminiImageConfigured(),
     supabaseConfigured: [process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY, process.env.SUPABASE_SERVICE_ROLE_KEY].every(hasConfiguredValue),
     localDemoMode: localDemo,
     aiMockMode: mockAiEnabled(),
