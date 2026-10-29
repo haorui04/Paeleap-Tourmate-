@@ -1,5 +1,6 @@
 import { hasConfiguredValue, localDemoEnabled, mockAiEnabled, resolveAiApiKey } from "../../../lib/config.js";
 import { FAQ_BANK_SIZE } from '../../../lib/knowledge-config.js';
+import { museumWebSearchConfigured, museumImageSearchProvider } from '../../../lib/attachments/museum-search.js';
 
 export const runtime = "nodejs";
 
@@ -17,6 +18,8 @@ export async function GET() {
     status: process.env.NODE_ENV === "production" && !ready ? "unconfigured" : "ok",
     aiConfigured: [process.env.AI_BASE_URL, resolveAiApiKey(), process.env.AI_MODEL].every(hasConfiguredValue),
     attachmentsConfigured: [process.env.AI_BASE_URL, resolveAiApiKey(), process.env.AI_MODEL, process.env.AI_VISION_MODEL].every(hasConfiguredValue),
+    museumWebImageSearchConfigured: museumWebSearchConfigured(),
+    museumImageSearchProvider: museumImageSearchProvider(),
     supabaseConfigured: [process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY, process.env.SUPABASE_SERVICE_ROLE_KEY].every(hasConfiguredValue),
     localDemoMode: localDemo,
     aiMockMode: mockAiEnabled(),

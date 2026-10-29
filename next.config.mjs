@@ -8,7 +8,7 @@ export default {
   outputFileTracingRoot: projectRoot,
   // The bounded document parser is a real Node worker, outside the route bundle.
   outputFileTracingIncludes: {
-    '/api/chat': ['./lib/attachments/document-worker.cjs', './node_modules/pdf-lib/**/*',
+    '/api/chat': ['./public/artifacts/deshou/*.jpg', './lib/attachments/document-worker.cjs', './node_modules/pdf-lib/**/*',
       './node_modules/@pdf-lib/**/*', './node_modules/pako/**/*', './node_modules/tslib/**/*', './node_modules/fflate/**/*']
   },
   devIndicators: false,

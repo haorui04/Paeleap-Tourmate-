@@ -20,6 +20,9 @@ import { identifyMuseumArtifact, isArtifactIdentificationRequest, museumAttachme
 import { attachmentPrompt, attachmentTranscript, MAX_ATTACHMENT_MESSAGE } from "../../../lib/attachments/shared.js";
 
 export const runtime = "nodejs";
+// Image observation, local photographic comparison and one web fallback are
+// sequential and bounded; allow their existing provider timeouts to finish.
+export const maxDuration = 120;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_BODY_CHARACTERS = 6000;
 // Keep the existing character contract for bilingual clients, but stop reading

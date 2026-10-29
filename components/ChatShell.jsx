@@ -780,7 +780,7 @@ export default function ChatShell() {
                 </div>
               </form>
               {attachmentBusy && <p className="attachment-help" role="status">{language==='zh'?'正在准备附件…':'Preparing attachment…'}</p>}
-              {attachmentEnabled && <p className="attachment-help">{language==='zh'?'单个文件 · 2 MB · PDF 最多 12 页。由 AI 处理，请勿上传证件或秘密信息。聊天记录不保存原始附件；再次提问细节时请重新上传。':'One file · 2 MB · PDF up to 12 pages. Processed by AI; do not upload IDs or secrets. Original files are not saved in chat history; reattach to ask about details later.'}</p>}
+              {attachmentEnabled && <p className="attachment-help">{language==='zh'?'单个文件 · 2 MB · PDF 最多 12 页。由 AI 及已启用的图片搜索服务处理，请勿上传证件或秘密信息。聊天记录不保存原始附件；再次提问细节时请重新上传。':'One file · 2 MB · PDF up to 12 pages. Processed by AI and enabled image-search services; do not upload IDs or secrets. Original files are not saved in chat history; reattach to ask about details later.'}</p>}
               <p className="composer-note"><span>{t.enterHint}</span><span>{t.disclaimer}</span></p>
             </div>
           </div>

@@ -10,7 +10,7 @@ import { provenanceLabel } from '../lib/client/personas.js';
 import { POST } from '../app/api/chat/route.js';
 import { museumMessages } from '../lib/ai/museum.js';
 
-const env={AI_BASE_URL:'https://museum-model.invalid/v1',AI_API_KEY:'SYNTHETIC-MUSEUM-KEY',AI_MODEL:'deepseek/text',AI_VISION_MODEL:'vision/image-pdf',AI_API_STYLE:'chat_completions'};
+const env={MUSEUM_WEB_SEARCH_ENABLED:'false',MUSEUM_REFERENCE_IMAGES_ENABLED:'false',AI_BASE_URL:'https://museum-model.invalid/v1',AI_API_KEY:'SYNTHETIC-MUSEUM-KEY',AI_MODEL:'deepseek/text',AI_VISION_MODEL:'vision/image-pdf',AI_API_STYLE:'chat_completions'};
 const description='A hexagonal basin with seven hollow tubes for flower stems.';
 const label='龙泉窑青釉六方七管占景盆，南宋。';
 const observation=changes=>JSON.stringify({kind:'artifact',confidence:'high',description,text:'',...changes});
