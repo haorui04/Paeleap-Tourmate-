@@ -16,7 +16,7 @@ const copy = {
     choose: "Persona + knowledge (.json, maximum 2 MB)", publish: "Publish reviewed package", publishing: "Publishing…",
     success: "The profile was published. Open its visitor link to verify the new version.",
     profiles: "Published profiles", empty: "No profiles are available.", version: "Version", records: "knowledge records",
-    platformBank: "Built-in profile · separate 100-FAQ travel bank",
+    platformBank: "Built-in profile · platform travel knowledge",
     identity: "Identity", venue: "Venue", tone: "Tone", scope: "Allowed scope", review: "Review before publishing",
     rules: "Platform safety rules cannot be changed by a persona package. Knowledge links are reference metadata, not automatic web crawls. Never upload credentials, visitor transcripts, or private personal information.",
     confirm: "I have reviewed the persona, knowledge accuracy, source permissions, and scope. This package is ready to publish.",
@@ -32,7 +32,7 @@ const copy = {
     choose: "角色与知识文件（.json，最大 2 MB）", publish: "发布已审核的资料包", publishing: "正在发布…",
     success: "角色配置已发布，请打开对应访客链接验证新版本。",
     profiles: "已发布的角色", empty: "暂无可用角色。", version: "版本", records: "条知识记录",
-    platformBank: "内置角色 · 独立的100题旅游知识库",
+    platformBank: "内置角色 · 平台旅游知识库",
     identity: "角色名称", venue: "所属场馆", tone: "语气", scope: "服务范围", review: "发布前审核",
     rules: "角色资料包不能覆盖平台安全规则。知识链接仅作为参考资料元数据，不会自动抓取网页。请勿上传密钥、访客对话或个人隐私资料。",
     confirm: "我已审核角色、知识准确性、资料使用权限和服务范围，确认可以发布。",
@@ -160,9 +160,9 @@ export default function PersonaAdmin() {
             <div className="admin-heading"><p className="section-kicker">PERSONA & KNOWLEDGE</p><h1>{t.title}</h1><p>{t.subtitle}</p></div>
             {access === "loading" ? <p role="status">{t.loading}</p>
               : access !== "ready" ? <section className="admin-card"><p role="alert">{access === "forbidden" ? t.forbidden : t.unavailable}</p><button type="button" className="primary-button" onClick={() => setAttempt((value) => value + 1)}>{t.retry}</button></section>
-                : <><PersonaEditor key={session.user.id} profiles={profiles} client={client} userId={session.user.id} language={language} onPublished={()=>{setMessage(t.success);setSuccess(true);setAttempt(value=>value+1);}} /><div className="admin-grid">
+                : <><PersonaEditor key={session.user.id} profiles={profiles} client={client} userId={session.user.id} language={language} onPublished={()=>{setMessage(t.success);setSuccess(true);setAttempt(value=>value+1);}} /><details className="admin-advanced"><summary>{language==="zh"?"高级工具：JSON 资料包与已发布角色":"Advanced tools: JSON packages & published profiles"}</summary><div className="admin-grid">
                   <section className="admin-card" aria-labelledby="admin-upload-title">
-                    <p className="section-kicker">01 / CONFIGURE</p><h2 id="admin-upload-title">{t.upload}</h2><p className="admin-description">{t.uploadBody}</p>
+                    <p className="section-kicker">JSON IMPORT</p><h2 id="admin-upload-title">{t.upload}</h2><p className="admin-description">{t.uploadBody}</p>
                     <form onSubmit={publish} className="admin-form">
                       <label className="admin-file-label" htmlFor="persona-package">{t.choose}</label>
                       <input ref={fileRef} type="file" id="persona-package" accept="application/json,.json" onChange={selectFile} disabled={busy} />
@@ -183,14 +183,14 @@ export default function PersonaAdmin() {
                     </form><p className="admin-smallprint">{t.privacy}</p>
                   </section>
                   <section className="admin-card" aria-labelledby="admin-profiles-title">
-                    <p className="section-kicker">02 / DEPLOY</p><h2 id="admin-profiles-title">{t.profiles}</h2>
+                    <p className="section-kicker">PUBLISHED</p><h2 id="admin-profiles-title">{t.profiles}</h2>
                     <ul className="admin-profile-list">{profiles.map((profile) => <li key={profile.id}>
                       <h3>{profile.name[language]}</h3><p>{profile.venue[language]}</p><small>{t.version} {profile.version} · {profile.id === "tourmate" ? t.platformBank : `${profile.recordCount} ${t.records}`}</small>
                       <a href={`/?persona=${encodeURIComponent(profile.id)}`} target="_blank" rel="noreferrer">{t.back} <span aria-hidden="true">↗</span></a>
                     </li>)}</ul>{!profiles.length && <p>{t.empty}</p>}
                     <div className="admin-boundary"><h3>{language === "zh" ? "发布边界" : "Publishing boundary"}</h3><p>{t.rules}</p></div>
                   </section>
-                </div></>}
+                </div></details></>}
           </div>}
     </main>
   );

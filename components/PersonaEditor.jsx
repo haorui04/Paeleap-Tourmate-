@@ -1,6 +1,7 @@
 "use client";
 import {useEffect,useRef,useState} from "react";
-import {draftKey,filterKnowledge,nextDraft,newKnowledgeRecord,parseBrowserDraft} from "../lib/client/admin-editor.js";
+import {draftKey,filterKnowledge,mergeKnowledge,nextDraft,newKnowledgeRecord,parseBrowserDraft} from "../lib/client/admin-editor.js";
+import KnowledgeConnector from "./KnowledgeConnector.jsx";
 
 export default function PersonaEditor({profiles,client,userId,language,onPublished}){
  const zh=language==="zh",say=(en,cn)=>zh?cn:en;
@@ -70,8 +71,8 @@ export default function PersonaEditor({profiles,client,userId,language,onPublish
  }
  const rows=draft?filterKnowledge(draft.knowledge,query):[],record=draft?.knowledge[selected];
  return <section className="admin-card admin-editor" aria-label={say("Visual administration editor","可视化管理编辑器")}>
-  <h2>{say("Persona & knowledge studio","角色与知识管理工作台")}</h2>
-  <p>{say("Edit a draft, review it, then publish. Published history is immutable.","编辑草稿、审核后发布。已发布的历史版本不会被覆盖。")}</p>
+  <div className="studio-heading"><div><p className="section-kicker">TOURMATE ADMINISTRATION</p><h2>{say("Your museum workspace","场馆管理工作台")}</h2><p>{say("Manage your assistant’s identity and the knowledge behind every answer.","管理助手的角色设定与回答所依据的知识资料。")}</p></div><span className="source-status">{say("Administrator","管理员")}</span></div>
+  <ol className="admin-steps"><li>{say("Choose a museum","选择场馆")}</li><li>{say("Edit persona & knowledge","编辑角色与知识")}</li><li>{say("Review & publish","审核并发布")}</li></ol>
   <div className="editor-toolbar">
    <label>{say("Museum profile","场馆角色")}<select value={draft?.id||""} disabled={busy} onChange={e=>load(e.target.value)}>
     <option value="">{say("Select a museum…","请选择场馆…")}</option>{profiles.filter(p=>p.id!=="tourmate").map(p=><option key={p.id} value={p.id}>{p.name[language]}</option>)}
@@ -81,6 +82,7 @@ export default function PersonaEditor({profiles,client,userId,language,onPublish
    <button type="button" disabled={busy} onClick={resume}>{say("Resume last browser draft","恢复上次浏览器草稿")}</button>
   </div>
   {message&&<p role="status" className="notice">{message}</p>}
+  {!draft&&<div className="studio-empty"><h3>{say("Choose an assistant to get started","选择一个助手开始管理")}</h3><p>{say("Open a museum below, or create a new persona. Published content remains active while you work on a draft.","选择下方场馆或创建新角色。编辑草稿期间，已发布内容仍正常提供服务。")}</p><div className="studio-profiles">{profiles.filter(p=>p.id!=="tourmate").map(p=><button type="button" key={p.id} disabled={busy} onClick={()=>load(p.id)}><strong>{p.name[language]}</strong><span>{p.venue[language]}</span><small>v{p.version} · {p.recordCount} {say("knowledge records","条知识记录")} →</small></button>)}</div></div>}
   {draft&&<fieldset disabled={busy} className="editor-fieldset">
    <legend>{draft.id} · {say("Draft version","草稿版本")} {draft.version} {dirty?say("· Unsaved","· 未保存"):""}</legend>
    <div className="editor-toolbar">
@@ -89,7 +91,8 @@ export default function PersonaEditor({profiles,client,userId,language,onPublish
     <button type="button" onClick={download}>{say("Export JSON backup","导出 JSON 备份")}</button>
    </div>
    <p className="admin-smallprint">{say("Browser drafts stay on this device and account. Export a backup before clearing browser data. Do not enter secrets or visitor information.","浏览器草稿仅保存在本设备并按账号区分。清理浏览器数据前请导出备份。请勿输入密钥或访客隐私。")}</p>
-   <nav className="editor-toolbar" aria-label={say("Editor sections","编辑栏目")}>{[["persona","Persona","角色"],["knowledge","Knowledge","知识"],["preview","Review & publish","审核与发布"],["history","Version history","版本历史"]].map(([id,en,cn])=><button type="button" key={id} aria-pressed={tab===id} onClick={()=>setTab(id)}>{say(en,cn)}</button>)}</nav>
+   <nav className="editor-toolbar editor-tabs" aria-label={say("Editor sections","编辑栏目")}>{[["persona","Persona","角色"],["sources","Knowledge sources","知识来源"],["knowledge","Knowledge","知识"],["preview","Review & publish","审核与发布"],["history","Version history","版本历史"]].map(([id,en,cn])=><button type="button" key={id} aria-pressed={tab===id} onClick={()=>setTab(id)}>{say(en,cn)}</button>)}</nav>
+   {tab==="sources"&&<KnowledgeConnector key={draft.id} api={api} profiles={profiles} language={language} onImport={(records,replace)=>{const merged=mergeKnowledge(draft.knowledge,records,replace);change(d=>{d.knowledge=merged;return d;});setSelected(0);setQuery("");}}/>}
    {tab==="persona"&&<div className="editor-fields">
     {["name","venue","role","greeting"].flatMap(key=>["en","zh"].map(lang=><label key={key+lang}>{({name:say("Assistant name","助手名称"),venue:say("Museum","场馆"),role:say("Role","角色定义"),greeting:say("Greeting","欢迎语")})[key]} ({lang==="en"?"English":"中文"})
      <textarea rows={key==="role"?4:2} maxLength={{name:80,venue:160,role:1600,greeting:800}[key]} value={draft[key][lang]} onChange={e=>field(key,lang,e.target.value)} /></label>))}

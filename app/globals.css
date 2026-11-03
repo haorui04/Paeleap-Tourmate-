@@ -305,6 +305,48 @@
   .composer-bottom { gap: 7px; }
 }
 /* Visual museum administration; scoped to avoid changing visitor chat. */
+.admin-shell { background:#f5f8fd; }
+.admin-content { max-width:1240px; padding-top:32px; }
+.admin-heading { margin-bottom:24px; }
+.admin-heading h1 { font-family:inherit; font-size:30px; font-weight:650; }
+.admin-heading .section-kicker { margin-bottom:8px; }
+.studio-heading,.source-intro { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; }
+.studio-heading p,.source-intro p { color:#60718a; font-size:13px; line-height:1.7; margin:8px 0; }
+.source-status { display:inline-block; border:1px solid #d6e5f8; background:#eff6ff; color:#28569a; padding:7px 11px; border-radius:20px; font-size:11px; white-space:nowrap; }
+.admin-steps { display:flex; flex-wrap:wrap; gap:12px 30px; margin:24px 0; padding:18px 18px 18px 38px; background:#f4f7fd; border-radius:12px; color:#435e83; font-size:12px; list-style:decimal; }
+.admin-steps li { margin-right:20px; }
+.admin-advanced { border:1px solid #dce5f2; border-radius:14px; background:white; }
+.admin-advanced > summary { padding:20px 24px; color:#3c5477; font-weight:600; font-size:13px; cursor:pointer; }
+.admin-advanced .admin-grid { padding:0 20px 20px; }
+.studio-empty { padding:30px 0 12px; border-top:1px solid #e3eaf6; }
+.studio-empty h3 { font-size:18px; margin:0 0 8px; }
+.studio-empty > p { color:#60718a; font-size:13px; line-height:1.7; }
+.studio-profiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr)); gap:14px; margin-top:22px; }
+.admin-editor .studio-profiles button { display:flex; flex-direction:column; gap:12px; text-align:left; background:#fff; padding:22px; border-color:#d6e3f5; }
+.studio-profiles strong { font-size:17px; }.studio-profiles span { color:#637793; font-size:12px; line-height:1.6; }.studio-profiles small { color:#3264a6; }
+.admin-editor .editor-tabs { gap:4px; padding:6px; border-radius:12px; background:#eef3fa; margin:24px 0; }
+.admin-editor .editor-tabs button { border:0; background:transparent; flex:1 1 auto; font-size:12px; padding:12px; }
+.admin-editor .editor-tabs button[aria-pressed=true] { color:#fff; background:#2858a6; box-shadow:0 3px 8px #23466c18; }
+.admin-editor label { font-size:12px; font-weight:550; color:#324d70; }
+.admin-editor input,.admin-editor select,.admin-editor textarea { min-width:0; font-size:13px; }
+.admin-editor .primary-button { background:#2858a6; color:white; border-color:#2858a6; }
+.admin-editor .primary-button:hover:not(:disabled) { background:#20498c; }
+.knowledge-connector h3 { font-size:17px; margin:0 0 10px; color:#233e64; }
+.knowledge-connector { min-width:0; }
+.knowledge-connector > .editor-fieldset { padding:0; border:0; }
+.knowledge-connector .admin-smallprint { margin:10px 0 18px; }
+.source-intro { margin-bottom:24px; }
+.source-options { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; margin:26px 0; }
+.source-option { min-width:0; padding:23px; border:1px solid #dde6f4; border-radius:14px; background:#fcfdff; }
+.source-option > p,.source-preview > p { font-size:12px; line-height:1.75; color:#637793; overflow-wrap:anywhere; }
+.source-option label { display:block; margin:16px 0; }
+.source-option small { display:block; font-size:11px; color:#637793; line-height:1.7; margin-top:12px; }
+.source-number { display:grid; place-items:center; width:28px; height:28px; color:#3565ad; background:#edf4ff; border-radius:8px; margin-bottom:14px; font-size:11px; font-weight:650; }
+.source-upload { border-top:1px solid #e2eaf5; padding-top:18px; }
+.source-preview { padding:24px; background:#f2f7ff; border:1px solid #d9e6f8; border-radius:14px; }
+.source-preview .primary-button { margin-top:18px; }
+.admin-editor input[type=file] { font-size:12px; }
+@media(max-width:700px) { .source-options { grid-template-columns:1fr; } .studio-heading,.source-intro { flex-wrap:wrap; } .admin-steps { gap:12px; flex-direction:column; } .admin-advanced .admin-grid { padding:0 10px 10px; } .source-preview,.source-option { padding:17px; } }
 .admin-editor { margin-bottom: 28px; }
 .editor-toolbar { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin:16px 0; }
 .editor-toolbar label { flex:1; min-width:180px; }
