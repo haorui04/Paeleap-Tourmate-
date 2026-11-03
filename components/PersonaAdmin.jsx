@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import AuthPanel from "./AuthPanel.jsx";
+import PersonaEditor from "./PersonaEditor.jsx";
 import { getSupabaseBrowserClient } from "../lib/client/supabase.js";
 import { parsePublicPersona, readPersonaPackage } from "../lib/client/personas.js";
 
@@ -159,7 +160,7 @@ export default function PersonaAdmin() {
             <div className="admin-heading"><p className="section-kicker">PERSONA & KNOWLEDGE</p><h1>{t.title}</h1><p>{t.subtitle}</p></div>
             {access === "loading" ? <p role="status">{t.loading}</p>
               : access !== "ready" ? <section className="admin-card"><p role="alert">{access === "forbidden" ? t.forbidden : t.unavailable}</p><button type="button" className="primary-button" onClick={() => setAttempt((value) => value + 1)}>{t.retry}</button></section>
-                : <div className="admin-grid">
+                : <><PersonaEditor key={session.user.id} profiles={profiles} client={client} userId={session.user.id} language={language} onPublished={()=>{setMessage(t.success);setSuccess(true);setAttempt(value=>value+1);}} /><div className="admin-grid">
                   <section className="admin-card" aria-labelledby="admin-upload-title">
                     <p className="section-kicker">01 / CONFIGURE</p><h2 id="admin-upload-title">{t.upload}</h2><p className="admin-description">{t.uploadBody}</p>
                     <form onSubmit={publish} className="admin-form">
@@ -189,7 +190,7 @@ export default function PersonaAdmin() {
                     </li>)}</ul>{!profiles.length && <p>{t.empty}</p>}
                     <div className="admin-boundary"><h3>{language === "zh" ? "发布边界" : "Publishing boundary"}</h3><p>{t.rules}</p></div>
                   </section>
-                </div>}
+                </div></>}
           </div>}
     </main>
   );
