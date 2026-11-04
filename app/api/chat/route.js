@@ -18,6 +18,7 @@ import { AttachmentError, prepareAttachment } from "../../../lib/attachments/fil
 import { answerAttachment, privateImageRequest, attachmentRefusal } from "../../../lib/attachments/analyze.js";
 import { identifyMuseumArtifact, isArtifactIdentificationRequest, museumAttachmentRefusal } from "../../../lib/attachments/museum.js";
 import { attachmentPrompt, attachmentTranscript, MAX_ATTACHMENT_MESSAGE } from "../../../lib/attachments/shared.js";
+import {captureAnalytics} from '../../../lib/admin/analytics.js';
 
 export const runtime = "nodejs";
 // Image observation, local photographic comparison and one web fallback are
@@ -89,6 +90,7 @@ function localHistory(value) {
 }
 
 export async function POST(request) {
+  const startedAt=Date.now();
   try {
     let body; let file = null;
     if (/^multipart\/form-data/i.test(request.headers.get('content-type') || '')) {
@@ -168,6 +170,7 @@ export async function POST(request) {
     let generationUsed = false;
     let generationMode = null;
     let generationSources = [];
+    let analyticsRecordIds=[];
     let verified = { reply: classified.reply, status: classified.status };
     const personaIdentity = !file && classified.status === "allowed" && isPersonaIdentityQuestion(body.message);
     if (file && classified.status === 'allowed') {
@@ -181,6 +184,7 @@ export async function POST(request) {
         : await answerAttachment({attachment:await prepareAttachment(file),message:body.message,language});
       verified = {reply:attached.reply,status:attached.status};
       generationUsed = true; generationMode = attached.mode; generationSources = attached.sources;
+      analyticsRecordIds=attached.recordIds||[];
     } else if (personaIdentity) {
       // Identity is public administrator data, never a visitor/model-authored role.
       verified = { reply: personaIdentityReply(persona, language), status: "allowed" };
@@ -188,6 +192,7 @@ export async function POST(request) {
       const identified = await identifyMuseumArtifact({message:body.message,language,persona});
       verified={reply:identified.reply,status:identified.status};
       generationUsed=true;generationMode=identified.mode;generationSources=identified.sources;
+      analyticsRecordIds=identified.recordIds||[];
     } else if (classified.status === "allowed" && (isWeatherRequest(body.message) || isWeatherFollowup(body.message, history))) {
       // The tool runs only after Auth, quota, ownership and input/persona checks.
       // Museum profiles cannot use global city weather to escape venue scope.
@@ -215,6 +220,7 @@ export async function POST(request) {
           generationSources = generated.sources;
           generationUsed = true;
           generationMode = generated.mode;
+          analyticsRecordIds=generated.recordIds||[];
         } catch (error) {
           // Never turn raw upstream errors into user-visible text.
           providerDegraded = true;
@@ -268,6 +274,9 @@ export async function POST(request) {
     const sources = status === "allowed" ? (generationUsed ? generationSources : (faq?.sources || [])) : [];
     if (!demo) {
       await storeExchange(user, conversationId, userContent, verified.reply, { id: persona.id, version: persona.version });
+      await captureAnalytics({user,conversationId,message:userContent,question:body.message,startedAt,persona,history,recordIds:analyticsRecordIds,
+        status,mode:personaIdentity?'persona_identity':generationUsed?generationMode:providerDegraded?'curated_faq_fallback':'curated_faq',
+        inputType:file?(file.type?.startsWith('image/')?'image':'document'):'text',language,degraded:providerDegraded,inScope:classified.status==='allowed'});
     } else {
       if (!demoConversations.has(conversationId) && demoConversations.size >= 100) {
         demoConversations.delete(demoConversations.keys().next().value);

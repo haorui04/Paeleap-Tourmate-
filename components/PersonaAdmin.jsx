@@ -3,12 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import AuthPanel from "./AuthPanel.jsx";
 import PersonaEditor from "./PersonaEditor.jsx";
+import AdminDashboard from './AdminDashboard.jsx';
 import { getSupabaseBrowserClient } from "../lib/client/supabase.js";
 import { parsePublicPersona, readPersonaPackage } from "../lib/client/personas.js";
 
 const copy = {
   en: {
-    title: "Venue assistants", subtitle: "One identity. One knowledge collection. A consistent visitor experience.",
+    title: "Tourmate administration", subtitle: "Manage your museum assistants and understand visitor enquiries.",
     back: "Open visitor chat", signOut: "Sign out", loading: "Checking administrator access…", retry: "Retry access check",
     forbidden: "This account is not authorized to manage personas. Ask the application owner to grant administrator access.",
     unavailable: "Administration is unavailable. Check the server configuration and try again.",
@@ -24,7 +25,7 @@ const copy = {
     error: "Publishing failed. No success has been confirmed. Check the package and retry."
   },
   zh: {
-    title: "场馆导览助手", subtitle: "独立角色、独立知识资料，为每个场馆提供一致的参观体验。",
+    title: "Tourmate 管理中心", subtitle: "管理场馆导览助手，了解访客的咨询需求。",
     back: "打开访客聊天", signOut: "退出登录", loading: "正在验证管理员权限…", retry: "重新验证权限",
     forbidden: "当前账户无权管理角色，请联系应用负责人授予管理员权限。",
     unavailable: "管理服务暂不可用，请检查服务端配置后重试。",
@@ -43,6 +44,7 @@ const copy = {
 
 export default function PersonaAdmin() {
   const [language, setLanguage] = useState("en");
+  const [workspace,setWorkspace]=useState('dashboard');
   const [client, setClient] = useState(null);
   const [session, setSession] = useState(null);
   const [authReady, setAuthReady] = useState(false);
@@ -157,10 +159,10 @@ export default function PersonaAdmin() {
       {!authReady ? <div className="loading-screen" role="status"><span className="loader" /><p>{t.loading}</p></div>
         : !session ? <AuthPanel client={client} language={language} administrator />
           : <div className="admin-content">
-            <div className="admin-heading"><p className="section-kicker">PERSONA & KNOWLEDGE</p><h1>{t.title}</h1><p>{t.subtitle}</p></div>
+            <div className="admin-heading"><p className="section-kicker">ADMINISTRATION</p><h1>{t.title}</h1><p>{t.subtitle}</p></div>
             {access === "loading" ? <p role="status">{t.loading}</p>
               : access !== "ready" ? <section className="admin-card"><p role="alert">{access === "forbidden" ? t.forbidden : t.unavailable}</p><button type="button" className="primary-button" onClick={() => setAttempt((value) => value + 1)}>{t.retry}</button></section>
-                : <><PersonaEditor key={session.user.id} profiles={profiles} client={client} userId={session.user.id} language={language} onPublished={()=>{setMessage(t.success);setSuccess(true);setAttempt(value=>value+1);}} /><details className="admin-advanced"><summary>{language==="zh"?"高级工具：JSON 资料包与已发布角色":"Advanced tools: JSON packages & published profiles"}</summary><div className="admin-grid">
+                : <><nav className="admin-workspace-nav" aria-label={language==='zh'?'管理工作区':'Administration workspace'}><button type="button" aria-pressed={workspace==='dashboard'} onClick={()=>setWorkspace('dashboard')}>{language==='zh'?'数据看板':'Dashboard'}</button><button type="button" aria-pressed={workspace==='content'} onClick={()=>setWorkspace('content')}>{language==='zh'?'角色与知识':'Persona & knowledge'}</button></nav>{workspace==='dashboard'&&<AdminDashboard key={session.user.id} profiles={profiles} client={client} language={language}/>}<div hidden={workspace!=='content'}><PersonaEditor key={session.user.id} profiles={profiles} client={client} userId={session.user.id} language={language} onPublished={()=>{setMessage(t.success);setSuccess(true);setAttempt(value=>value+1);}} /><details className="admin-advanced"><summary>{language==="zh"?"高级工具：JSON 资料包与已发布角色":"Advanced tools: JSON packages & published profiles"}</summary><div className="admin-grid">
                   <section className="admin-card" aria-labelledby="admin-upload-title">
                     <p className="section-kicker">JSON IMPORT</p><h2 id="admin-upload-title">{t.upload}</h2><p className="admin-description">{t.uploadBody}</p>
                     <form onSubmit={publish} className="admin-form">
@@ -190,7 +192,7 @@ export default function PersonaAdmin() {
                     </li>)}</ul>{!profiles.length && <p>{t.empty}</p>}
                     <div className="admin-boundary"><h3>{language === "zh" ? "发布边界" : "Publishing boundary"}</h3><p>{t.rules}</p></div>
                   </section>
-                </div></details></>}
+                </div></details></div></>}
           </div>}
     </main>
   );
