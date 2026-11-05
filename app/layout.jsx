@@ -1,4 +1,5 @@
 import "./globals.css";
+import RecoveryRouter from '../components/RecoveryRouter.jsx';
 
 export const metadata = {
   title: "Tourmate · 小德兔 Museum Guide",
@@ -15,7 +16,7 @@ export const viewport = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body><RecoveryRouter/>{children}</body>
     </html>
   );
 }

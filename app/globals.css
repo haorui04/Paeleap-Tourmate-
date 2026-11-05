@@ -305,6 +305,15 @@
   .composer-bottom { gap: 7px; }
 }
 /* Visual museum administration; scoped to avoid changing visitor chat. */
+.account-admin { margin-bottom:32px; }.account-admin h2 { font-size:23px; margin:0; }.account-admin .dashboard-stats { margin-top:15px; }
+.account-admin button { border:1px solid #ccd9ed; background:white; color:#28518b; padding:11px 15px; border-radius:9px; }
+.account-admin input { display:block; width:100%; border:1px solid #c5d4e9; padding:11px; margin:8px 0 20px; border-radius:8px; }
+.account-grid { display:grid; grid-template-columns:minmax(240px,1fr) minmax(0,2fr); gap:20px; }.account-list { display:flex; flex-direction:column; gap:9px; max-height:640px; overflow:auto; }
+.account-list button { display:flex; flex-direction:column; align-items:flex-start; text-align:left; gap:8px; overflow-wrap:anywhere; }.account-list span { font-size:11px; color:#647790; }
+.account-list button[aria-pressed=true] { background:#edf4ff; border-color:#245bd8; }.account-grid h3,.account-grid p { overflow-wrap:anywhere; }
+.account-usage { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }.account-usage div { border:1px solid #e1e9f5; padding:12px; border-radius:8px; }.account-usage dt { color:#647790; font-size:12px; }.account-usage dd { margin:7px 0 0; font-size:24px; color:#245bd8; }
+.account-admin details { padding:10px 0; overflow-wrap:anywhere; }.account-admin :focus-visible { outline:3px solid #245bd8; outline-offset:3px; }
+@media(max-width:700px) { .account-grid { grid-template-columns:1fr; }.account-list { max-height:250px; }.admin-workspace-nav { flex-wrap:wrap; } }
 .admin-workspace-nav { display:flex; gap:8px; margin:0 0 24px; border-bottom:1px solid #dce5f4; padding-bottom:12px; }
 .admin-workspace-nav button,.dashboard button { border:1px solid #cbdaf1; border-radius:9px; padding:10px 16px; background:white; color:#28518b; font-size:13px; }
 .admin-workspace-nav button[aria-pressed=true] { color:white; background:#245bd8; border-color:#245bd8; }
