@@ -3,8 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 import { ATTACHMENT_ACCEPT } from '../lib/attachments/shared.js';
 import { prepareClientAttachment } from '../lib/client/attachments.js';
 
-export default function AttachmentPicker({file,language,disabled,onChange,onBusy,onError,museum=false}) {
-  const input = useRef(null); const sequence = useRef(0); const [preview,setPreview] = useState('');
+export default function AttachmentPicker({file,language,disabled,onChange,onBusy,onError,museum=false,cameraMode=false}) {
+  const input = useRef(null); const camera = useRef(null); const sequence = useRef(0); const [preview,setPreview] = useState('');
   useEffect(() => () => { sequence.current += 1; }, []);
   useEffect(() => {
     if (!file?.type.startsWith('image/')) { setPreview(''); return; }
@@ -26,6 +26,10 @@ export default function AttachmentPicker({file,language,disabled,onChange,onBusy
   }
   return <div className="attachment-picker">
     <input ref={input} type="file" className="sr-only" accept={ATTACHMENT_ACCEPT} onChange={select} disabled={disabled} aria-label={museum ? language === 'zh' ? '选择文物图片或博物馆文档' : 'Choose an artifact image or museum document' : language === 'zh' ? '选择图片或旅游文档' : 'Choose an image or travel document'} tabIndex={-1}/>
+    {cameraMode && <>
+      <input ref={camera} type="file" hidden accept="image/jpeg,image/png,image/webp" capture="environment" onChange={select} disabled={disabled}/>
+      <button className="attach-button" type="button" disabled={disabled} onClick={() => camera.current?.click()}>{language === 'zh' ? '拍照' : 'Take photo'}</button>
+    </>}
     <button className="attach-button" type="button" onClick={()=>input.current?.click()} disabled={disabled} aria-label={language === 'zh' ? '添加图片或文件' : 'Attach an image or document'} title={language === 'zh' ? '图片、PDF、DOCX、TXT、Markdown · 单个文件 2 MB' : 'Image, PDF, DOCX, TXT, Markdown · one file, 2 MB'}>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="m8 13 6-6a3 3 0 0 1 4 4l-8 8a5 5 0 0 1-7-7l9-9a6 6 0 0 1 8 8l-8 8"/></svg>
       {language === 'zh' ? '附件' : 'Attach'}

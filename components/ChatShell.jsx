@@ -5,6 +5,8 @@ import AuthPanel from "./AuthPanel.jsx";
 import useTripHistory from "./useTripHistory.js";
 import TravelScene from "./TravelScene.jsx";
 import MuseumScene from "./MuseumScene.jsx";
+import DeshouGuide from "./DeshouGuide.jsx";
+import { MUSEUM_GUIDE_ID } from "../lib/museum-guide.js";
 import DeleteChatDialog from "./DeleteChatDialog.jsx";
 import ThinkingIndicator from "./ThinkingIndicator.jsx";
 import AttachmentPicker from "./AttachmentPicker.jsx";
@@ -225,6 +227,10 @@ function Message({ message, language, copied, onCopy, avatar }) {
 
 export default function ChatShell() {
   const [language, setLanguage] = useState("en");
+  const [museumChat, setMuseumChat] = useState(false);
+  const [museumContext, setMuseumContext] = useState(null);
+  const [museumPrompt, setMuseumPrompt] = useState(null);
+  const [museumPhoto, setMuseumPhoto] = useState(false);
   const [service, setService] = useState({ state: "loading", data: null });
   const [statusAttempt, setStatusAttempt] = useState(0);
   const [personaId, setPersonaId] = useState(null);
@@ -426,12 +432,14 @@ export default function ChatShell() {
   }
 
   function startNewTrip() {
+    setMuseumChat(true); setMuseumContext(null); setMuseumPrompt(null); setMuseumPhoto(false);
     history.newTrip();
     setSidebarOpen(false);
     requestAnimationFrame(() => textareaRef.current?.focus());
   }
 
   function selectTrip(id) {
+    setMuseumChat(true); setMuseumContext(null); setMuseumPrompt(null); setMuseumPhoto(false);
     history.selectTrip(id);
     setSidebarOpen(false);
     requestAnimationFrame(() => textareaRef.current?.focus());
@@ -494,9 +502,38 @@ export default function ChatShell() {
     });
   }
 
+  function openMuseumChat(item, prompt, photo = false) {
+    setMuseumContext(item || null);
+    setMuseumPhoto(photo);
+    setMuseumPrompt(prompt || null);
+    setMuseumChat(true);
+  }
+
+  useEffect(() => {
+    if (!museumChat || !museumPrompt || !activeTrip || !history.ready || (!session && !demoMode)) return;
+    history.updateTrip(activeTrip.id, { draft: museumPrompt });
+    setMuseumPrompt(null);
+    if (!museumPhoto) requestAnimationFrame(() => textareaRef.current?.focus());
+  }, [museumChat, museumPrompt, activeTrip?.id, history.ready, session, demoMode, museumPhoto]);
+
+  async function sendMuseumReport(artifactId, reason) {
+    const { data } = await authClient.auth.getSession();
+    if (!data.session?.access_token) throw Error('Sign in again');
+    const response = await fetch('/api/museum/reports', {
+      method: 'POST', headers: { Authorization: `Bearer ${data.session.access_token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ artifactId, reason }), signal: AbortSignal.timeout(20000)
+    });
+    if (!response.ok) throw Error('Report unavailable');
+  }
+
   async function submitMessage(event) {
     event.preventDefault();
-    const message = attachment ? attachmentPrompt(draft,language,personaId) : draft.trim();
+    let message = attachment ? attachmentPrompt(draft,language,personaId) : draft.trim();
+    if (personaId === MUSEUM_GUIDE_ID && museumContext && !attachment && message &&
+      /\b(?:it|its|this exhibit|this object|this artifact)\b|它|这件|這件/iu.test(message)) {
+      const contextual = `${message}\n\n${language === 'zh' ? '当前展品' : 'Selected exhibit'} — ${museumContext.name[language]}`;
+      if (contextual.length <= messageLimit) message = contextual;
+    }
     if (!personaReady || !activeTrip || historyUnavailable || !message || pending || attachmentBusy || requestsRef.current.has(activeTrip.id) || message.length > messageLimit) return;
     const tripId = activeTrip.id;
     const selectedFile = attachment;
@@ -606,6 +643,7 @@ export default function ChatShell() {
 
   const showLoading = service.state === "loading" || profile.state === "loading" || (!demoMode && !authReady) || (chatIdentity && !history.ready);
   const needsAuthentication = !demoMode && authReady && !session;
+  const deshou = persona?.id === MUSEUM_GUIDE_ID;
   const suggestions = persona?.id === "little-de-rabbit" ? (language === "zh" ? [
     { title: "认识小德兔", body: "了解你的博物馆导览伙伴", prompt: "你是谁，你的角色是什么？" },
     { title: "看懂一件文物", body: "七根花管里藏着什么巧思？", prompt: "龙泉窑青釉六方七管占景盆是什么，有什么用途？" },
@@ -626,7 +664,7 @@ export default function ChatShell() {
   ];
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${deshou ? ' deshou-shell' : ''}`}>
       <span className="sr-only" role="status">{announcement}</span>
       <DeleteChatDialog trip={deleteTarget} busy={Boolean(history.deletingTripId)} error={deleteError} language={language} onCancel={closeDeleteDialog} onConfirm={confirmDelete}/>
       {sidebarOpen && <button className="sidebar-backdrop" type="button" aria-label={t.closeTrips} onClick={() => { setSidebarOpen(false); historyButtonRef.current?.focus(); }} />}
@@ -692,7 +730,16 @@ export default function ChatShell() {
           </div>
         </header>
 
-        {showLoading ? (
+        {deshou && <div className={`deshou-explorer${museumChat ? ' deshou-nav-only' : ''}`}>
+          <DeshouGuide language={language} active={!museumChat} onAsk={openMuseumChat} onBrowse={() => setMuseumChat(false)}
+            onPhoto={() => openMuseumChat(null, language === 'zh' ? '这是什么文物？' : 'What artifact is this?', true)}
+            onReport={session && authClient ? sendMuseumReport : undefined} />
+        </div>}
+        {deshou && museumChat && <div className="deshou-chat-tools">
+          <button type="button" onClick={() => setMuseumChat(false)}>{language === 'zh' ? '← 返回导览' : '← Back to museum guide'}</button>
+          {museumContext && <button type="button" onClick={() => setMuseumContext(null)} aria-label={language === 'zh' ? '清除展品上下文' : 'Clear exhibit context'}>{museumContext.name[language]} ×</button>}
+        </div>}
+        {(!deshou || museumChat) && (showLoading ? (
           <div className="loading-screen" role="status"><span className="loader" /><p>{t.loading}</p></div>
         ) : service.state === "error" ? (
           <section className="auth-wrap" aria-labelledby="connection-title">
@@ -754,6 +801,9 @@ export default function ChatShell() {
             </section>
 
             <div className="composer-area">
+              {deshou && museumPhoto && <p className="attachment-help" role="status">{attachmentEnabled
+                ? language === 'zh' ? '拍摄文物或从附件中选择照片，再发送。若无法匹配，可拍摄展签。' : 'Take a photo or attach an existing one, then send. If the match is uncertain, try photographing the exhibit label.'
+                : language === 'zh' ? '图片识别暂不可用。你可以返回文物列表浏览。' : 'Photo identification is currently unavailable. You can browse the exhibit gallery.'}</p>}
               {history.storageFailed && <p className="history-notice" role="status">{t.storageError}</p>}
               {history.syncFailed && <div className="history-notice" role="status">{t.syncError} <button type="button" onClick={history.retrySync}>{t.retry}</button></div>}
               {error && (
@@ -768,7 +818,7 @@ export default function ChatShell() {
                   placeholder={persona?.id === DEFAULT_PERSONA_ID ? t.placeholder : language === "zh" ? `向${personaName}询问场馆相关问题…` : `Ask ${personaName} about this venue…`} value={draft} onChange={(event) => setDraft(event.target.value)}
                   onInput={resizeTextarea} onKeyDown={onComposerKeyDown} disabled={!personaReady || pending || historyUnavailable || attachmentBusy} />
                 <div className="composer-bottom">
-                  {attachmentEnabled && <AttachmentPicker key={`${chatIdentity}-${personaId}-${activeTrip?.id}`} file={attachment} language={language} museum={museum}
+                  {attachmentEnabled && <AttachmentPicker key={`${chatIdentity}-${personaId}-${activeTrip?.id}`} file={attachment} language={language} museum={museum} cameraMode={deshou && museumPhoto}
                     disabled={pending || attachmentBusy || historyUnavailable} onBusy={setAttachmentBusy} onError={setError}
                     onChange={file=>{if(file && draft.length>MAX_ATTACHMENT_MESSAGE){setError(language==='zh'?'附带文件时，请将问题缩短至 1,300 字符。':'Shorten your question to 1,300 characters when attaching a file.');return;} setAttachmentDrafts(previous=>({...previous,[activeTrip.id]:file}));}}/>}
                   <span className={`character-count ${draft.length > messageLimit-150 ? "near-limit" : ""}`}>{draft.length}/{messageLimit}</span>
@@ -784,7 +834,7 @@ export default function ChatShell() {
               <p className="composer-note"><span>{t.enterHint}</span><span>{t.disclaimer}</span></p>
             </div>
           </div>
-        )}
+        ))}
       </main>
     </div>
   );

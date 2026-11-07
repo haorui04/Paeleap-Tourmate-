@@ -402,3 +402,97 @@
 .editor-review p { white-space:pre-wrap; }
 .admin-editor :focus-visible { outline:3px solid #2563eb; outline-offset:3px; }
 @media(max-width:700px) { .editor-knowledge { grid-template-columns:1fr; } .editor-records { max-height:220px; } .editor-fieldset { padding:10px; } }
+/* Little De Rabbit museum guide */
+.deshou-shell {
+  --blue: #963e36;
+  --blue-dark: #753028;
+  --ink: #272522;
+  --muted: #64564e;
+  --border: #e5d7c4;
+  background: #f7f2e8;
+}
+.deshou-shell .main-panel, .deshou-shell .conversation { background: #f7f2e8; }
+.deshou-shell .topbar, .deshou-shell .sidebar, .deshou-shell .composer-area { background: #fffaf0; border-color: #e5d7c4; }
+.deshou-shell .topbar-heading strong, .deshou-shell .sidebar strong, .deshou-shell .welcome-panel h1 { color: #56332a; }
+.deshou-shell .new-trip-button, .deshou-shell .send-button, .deshou-shell .brand-icon { background: #963e36; }
+.deshou-shell .trip-item.active, .deshou-shell .language-toggle .active { background: #f0ded2; color: #753028; }
+.deshou-shell .chat-layout { flex: 1; min-height: 0; animation: deshou-enter .24s ease-out both; }
+.deshou-shell .auth-wrap { background: radial-gradient(ellipse at 25% 65%,#ebdecb,#fffaf0 70%); }
+.deshou-shell .auth-card, .deshou-shell .composer, .deshou-shell .suggestion-card { background: #fffdf7; border-color: #decdb4; }
+.deshou-shell .composer:focus-within { border-color: #a47e68; box-shadow: 0 0 0 3px #f0ded2; }
+.deshou-shell .composer textarea, .deshou-shell .auth-card h1 { color: #56332a; }
+.deshou-explorer { flex: 1; min-height: 0; overflow: auto; color: #272522; }
+.deshou-explorer.deshou-nav-only { flex: none; overflow: visible; }
+.deshou-guide { max-width: 1120px; margin: auto; padding: 0 clamp(14px, 4vw, 42px); }
+.deshou-nav { position: sticky; top: 0; z-index: 2; display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 6px; background: #f7f2e8; border-bottom: 1px solid #e5d7c4; padding: 10px 0; }
+.deshou-guide button, .deshou-chat-tools button { border: 1px solid #dacbb6; border-radius: 10px; color: #56332a; background: #fffaf0; padding: 10px 14px; min-height: 44px; font-weight: 620; transition: background .18s, border-color .18s, box-shadow .18s; }
+.deshou-guide button:hover:not(:disabled), .deshou-chat-tools button:hover { background: #f1e4d5; border-color: #a47e68; }
+.deshou-guide button[aria-pressed=true], .deshou-guide button[aria-current=page] { background: #e5eae0; border-color: #92a08d; color: #314639; }
+.deshou-guide button.deshou-primary { background: #963e36; color: #fffaf0; border-color: #963e36; }
+.deshou-guide button.deshou-primary:hover:not(:disabled) { background: #753028; }
+.deshou-guide button:disabled { opacity: .55; cursor: not-allowed; }
+.deshou-guide :focus-visible, .deshou-chat-tools :focus-visible { outline: 3px solid #8f4a38; outline-offset: 3px; }
+.deshou-view { padding: 20px 0 36px; animation: deshou-enter .24s ease-out both; }
+.deshou-view[hidden] { display: none; }
+@keyframes deshou-enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.deshou-guide h1, .deshou-guide h2, .deshou-guide h3 { font-family: Georgia, 'Songti SC', SimSun, serif; color: #573229; line-height: 1.2; }
+.deshou-guide h1 { font-size: clamp(29px,4vw,49px); margin: 9px 0 16px; }
+.deshou-guide h2 { font-size: clamp(20px,2.6vw,27px); margin: 22px 0 12px; }
+.deshou-guide h3 { font-size: 20px; }
+.deshou-guide p { line-height: 1.65; overflow-wrap: anywhere; }
+.deshou-guide a { color: #803a31; text-underline-offset: 3px; }
+.deshou-kicker { font-size: 12px; letter-spacing: .12em; color: #765043; font-weight: 700; }
+.deshou-hero { display: grid; grid-template-columns: 1.06fr 1fr; align-items: center; gap: 18px; background: linear-gradient(120deg,#fff9ed,#eadfc9); border: 1px solid #decdb4; border-radius: 20px; padding: clamp(18px,4vw,42px); overflow: hidden; }
+.deshou-scene { position: relative; }
+.deshou-palace { width: 100%; display: block; }
+.deshou-lantern { position: absolute; top: 12%; width: 25px; height: 32px; border-radius: 45%; background: radial-gradient(ellipse at 50% 55%, #ffd589 0%, #cf7049 53%, #963e36 80%); box-shadow: 0 0 13px 3px #eea75770; transition: box-shadow .2s, filter .2s; animation: deshou-glow 4s ease-in-out infinite alternate; }
+.deshou-lantern::before { content: ''; position: absolute; width: 1px; height: 14px; left: 50%; bottom: 100%; background: #765043; }
+.deshou-lantern::after { content: ''; position: absolute; left: 44%; top: 100%; width: 3px; height: 8px; background: #ba7750; }
+.deshou-lantern.first { left: 9%; }.deshou-lantern.second { right: 8%; animation-delay: -1.7s; }
+.deshou-scene:hover .deshou-lantern { animation-play-state: paused; filter: brightness(1.27); box-shadow: 0 0 24px 8px #f5ac5780; }
+@keyframes deshou-glow { from { opacity: .72; } to { opacity: 1; box-shadow: 0 0 22px 6px #eea75785; } }
+.deshou-actions { display: flex; flex-wrap: wrap; gap: 9px; margin: 15px 0; }
+.deshou-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin: 14px 0; }
+.deshou-grid.zones { grid-template-columns: repeat(auto-fit,minmax(min(100%,200px),1fr)); }
+.deshou-grid.zones button, .deshou-exhibit { text-align: left; }
+.deshou-grid.zones button span, .deshou-exhibit small { display: block; color: #68594e; font-weight: 450; font-size: 13px; margin-top: 4px; }
+.deshou-guide .deshou-exhibit { display: grid; align-items: center; grid-template-columns: 52px minmax(0,1fr) auto; gap: 10px; min-height: 88px; }
+.deshou-exhibit img, .deshou-category-mark { width: 52px; height: 52px; object-fit: cover; border-radius: 8px; }
+.deshou-category-mark { display: grid; place-items: center; font-family: Georgia, SimSun, serif; font-size: 25px; color: #536959; background: #e4eae0; }
+.deshou-search { display: grid; gap: 6px; margin: 16px 0; }
+.deshou-search input, .deshou-search select { width: 100%; min-width: 0; border: 1px solid #bca891; border-radius: 9px; padding: 12px; color: #272522; background: #fffaf0; font: inherit; }
+.deshou-reading, .deshou-tour { border: 1px solid #decdb4; border-radius: 15px; padding: clamp(15px,3vw,26px); margin: 14px 0; background: #fffaf0; }
+.deshou-object figure, .deshou-reading figure { margin: 16px 0; }
+.deshou-object figure img { max-width: 100%; max-height: 350px; border-radius: 12px; object-fit: contain; }
+.deshou-object figcaption { font-size: 12px; margin-top: 6px; }
+.deshou-object .deshou-qr { width: 148px; padding: 4px; background: white; }
+.deshou-sources { border: 1px solid #decdb4; padding: 12px 14px; border-radius: 10px; margin: 10px 0; overflow-wrap: anywhere; }
+.deshou-sources summary { cursor: pointer; font-weight: 650; }
+.deshou-sources ul { padding-inline-start: 20px; }
+.deshou-tour progress { width: 100%; height: 10px; accent-color: #963e36; }
+.deshou-dialogue { display: grid; grid-template-columns: minmax(74px,105px) minmax(0,1fr); align-items: end; gap: 15px; margin-top: 20px; }
+.deshou-rabbit { width: 100%; max-width: 118px; animation: deshou-bob 2.8s ease-in-out infinite; transform-origin: center bottom; }
+.deshou-rabbit.small { width: 72px; }
+.deshou-ears { transform-origin: 60px 46px; animation: deshou-ear 4.5s ease-in-out infinite; }
+.deshou-eyes { transform-origin: 60px 67px; animation: deshou-blink 5s linear infinite; }
+@keyframes deshou-bob { 50% { transform: translateY(-5px); } }
+@keyframes deshou-ear { 0%,85%,100% { transform: rotate(0); } 92% { transform: rotate(6deg); } }
+@keyframes deshou-blink { 0%,94%,98%,100% { transform: scaleY(1); } 96% { transform: scaleY(.12); } }
+.deshou-guide button.deshou-bubble { display: grid; gap: 14px; width: 100%; margin-top: 5px; text-align: left; background: #fff; font-weight: 450; font-size: clamp(15px,2vw,19px); line-height: 1.6; }
+.deshou-bubble span span { display: block; animation: deshou-enter .25s ease-out both; }
+.deshou-audio-rate { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; }
+.deshou-audio-rate select { color: #56332a; border: 1px solid #bca891; border-radius: 8px; background: #fffaf0; padding: 8px; min-height: 44px; }
+.deshou-bubble small { color: #803a31; font-weight: 700; font-size: 13px; }
+.deshou-notice { border-radius: 9px; padding: 12px; background: #f2e4cf; }
+.deshou-chat-tools { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 14px; background: #fffaf0; }
+@media(max-width: 620px) {
+  .deshou-hero { grid-template-columns: 1fr; gap: 4px; }
+  .deshou-scene { max-width: 270px; margin: auto; width: 100%; }
+  .deshou-grid { grid-template-columns: 1fr; }
+  .deshou-dialogue { grid-template-columns: 65px minmax(0,1fr); gap: 9px; }
+  .deshou-nav button { padding-inline: 4px; font-size: 13px; }
+  .deshou-chat-tools button { font-size: 12px; }
+}
+@media(prefers-reduced-motion: reduce) {
+  .deshou-guide *, .deshou-shell .chat-layout, .deshou-shell .message-row, .deshou-shell .thinking-card, .deshou-shell .thinking-card * { animation: none !important; transition: none !important; }
+}
