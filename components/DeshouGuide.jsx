@@ -182,9 +182,17 @@ export default function DeshouGuide({ language, onAsk, onPhoto, onReport, onBrow
     </nav>
     <div key={view} className="deshou-view" hidden={!active}>
       {view === 'home' && <>
-        <header className="deshou-hero">
+        <header className="deshou-hero" onPointerMove={event => {
+          if (event.pointerType !== 'mouse' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+          const bounds = event.currentTarget.getBoundingClientRect();
+          event.currentTarget.style.setProperty('--scene-x', ((event.clientX - bounds.left) / bounds.width - .5) * 12 + 'deg');
+          event.currentTarget.style.setProperty('--scene-y', ((event.clientY - bounds.top) / bounds.height - .5) * -8 + 'deg');
+        }} onPointerLeave={event => {
+          event.currentTarget.style.setProperty('--scene-x', '0deg');
+          event.currentTarget.style.setProperty('--scene-y', '0deg');
+        }}>
           <div><p className="deshou-kicker">{say('SOUTHERN SONG · HANGZHOU', '南宋 · 杭州')}</p><h1 ref={heading} tabIndex={-1}>{say('Walk through Deshou Palace', '漫游德寿宫')}</h1><p>{say('Explore the Southern Song Deshou Palace Ruins with Little De Rabbit.', '与小德兔一起探索南宋德寿宫遗址。')}</p></div>
-          <div className="deshou-scene"><PalaceDrawing/><span className="deshou-lantern first" aria-hidden="true"/><span className="deshou-lantern second" aria-hidden="true"/></div>
+          <div className="deshou-scene"><div className="deshou-orbit" aria-hidden="true"/><div className="deshou-platform" aria-hidden="true"/><PalaceDrawing/><span className="deshou-lantern first" aria-hidden="true"/><span className="deshou-lantern second" aria-hidden="true"/><span className="deshou-scene-caption">{say('DESHOU PALACE · A JOURNEY THROUGH TIME', '德寿宫 · 与时光相遇')}</span></div>
         </header>
         <div className="deshou-actions">
           <button className="deshou-primary" type="button" onClick={() => open('tours')}>{say('Start guided tour', '开始导览')}</button>

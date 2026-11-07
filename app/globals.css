@@ -496,3 +496,70 @@
 @media(prefers-reduced-motion: reduce) {
   .deshou-guide *, .deshou-shell .chat-layout, .deshou-shell .message-row, .deshou-shell .thinking-card, .deshou-shell .thinking-card * { animation: none !important; transition: none !important; }
 }
+
+/* Immersive museum art direction */
+.deshou-shell { --blue:#a45e43; --blue-dark:#76422e; --ink:#292e2b; --muted:#6b716b; }
+.deshou-shell .main-panel { background:radial-gradient(ellipse at 85% 15%,#e4e8dc,transparent 48%),#f5f3ec; }
+.deshou-shell .sidebar { background:#172e29; border-color:#30483f; color:#e8e8d9; }
+.deshou-shell .sidebar .brand-name,.deshou-shell .sidebar strong { color:#f3ead8; }
+.deshou-shell .sidebar .brand-tag,.deshou-shell .sidebar .venue-name,.deshou-shell .sidebar-label,.deshou-shell .sidebar-disclaimer { color:#b8c4b8; }
+.deshou-shell .sidebar .trust-card { background:#203b32; border-color:#3c5145; }
+.deshou-shell .sidebar .trust-card p,.deshou-shell .sidebar .trust-icon { color:#bfcbbd; }
+.deshou-shell .new-trip-button { background:#a96b4c; border:1px solid #cf9b71; box-shadow:0 8px 22px #071c2050; }
+.deshou-shell .topbar { background:#f8f7f0dd; backdrop-filter:blur(18px); border-color:#d9ddd0; }
+.deshou-explorer { background:radial-gradient(ellipse at 85% 20%,#dce3d780,transparent 55%); }
+.deshou-guide { max-width:1320px; padding-inline:clamp(18px,4vw,64px); }
+.deshou-nav { top:12px; margin:12px auto 10px; padding:6px; border:1px solid #dce0d2; border-radius:18px; background:#fdfcf4e8; backdrop-filter:blur(20px); box-shadow:0 8px 30px #1c332b0b; }
+.deshou-guide .deshou-nav button { border:0; background:transparent; border-radius:12px; color:#526052; }
+.deshou-guide .deshou-nav button[aria-current=page] { background:#213f34; color:#faf3e0; box-shadow:0 4px 12px #193b3022; }
+.deshou-view { animation:deshou-reveal .55s cubic-bezier(.16,1,.3,1) both; }
+.deshou-hero { position:relative; isolation:isolate; min-height:410px; border:1px solid #41584a; border-radius:26px; color:#e8e7d7; background:radial-gradient(ellipse at 79% 35%,#4d6651,transparent 55%),linear-gradient(135deg,#142e28,#294236); padding:clamp(26px,4vw,58px); box-shadow:0 28px 55px -25px #15392f80,inset 0 1px #d9d6ac35; perspective:1000px; }
+.deshou-hero::before { content:''; pointer-events:none; position:absolute; inset:0; z-index:-1; opacity:.16; background-image:repeating-linear-gradient(90deg,transparent 0 79px,#b3c1a4 80px,transparent 81px),repeating-linear-gradient(0deg,transparent 0 79px,#b3c1a4 80px,transparent 81px); mask-image:linear-gradient(90deg,transparent,#000); }
+.deshou-hero h1 { color:#f6edd6; font-weight:450; font-size:clamp(34px,4.4vw,65px); letter-spacing:-.045em; line-height:1.08; max-width:560px; }
+.deshou-hero .deshou-kicker { color:#d6b67c; font-size:10px; letter-spacing:.2em; margin-bottom:26px; }
+.deshou-hero p:last-child { color:#c5d0bf; max-width:350px; font-size:14px; }
+.deshou-scene { transform-style:preserve-3d; transform:rotateX(var(--scene-y,0deg)) rotateY(var(--scene-x,0deg)); transition:transform .5s cubic-bezier(.2,.8,.2,1); padding:55px 0 45px; }
+.deshou-scene .deshou-palace { position:relative; z-index:1; transform:translateZ(45px); filter:drop-shadow(0 24px 12px #061d2855); }
+.deshou-orbit { position:absolute; inset:0 8%; border:1px solid #c7c39740; border-radius:50%; transform:translateZ(-20px); box-shadow:0 0 0 24px #c7c39708,0 0 0 48px #c7c39706; }
+.deshou-platform { position:absolute; left:4%; right:4%; top:54%; height:40%; border:1px solid #b5bf9760; border-radius:50%; background:radial-gradient(ellipse,#b2b68750,#254536); transform:rotateX(65deg) translateZ(-8px); box-shadow:0 25px 0 #152e24,0 27px 0 #70836a70,0 55px 35px #081d2650; }
+.deshou-scene-caption { display:block; position:relative; margin-top:35px; text-align:center; font-size:8px; color:#cccfb6; letter-spacing:.17em; }
+.deshou-lantern { top:13%; transform:translateZ(65px); }
+.deshou-guide button { transition:transform .25s,box-shadow .25s,background .25s,border-color .25s; }
+.deshou-guide button:hover:not(:disabled) { transform:translateY(-3px); box-shadow:0 9px 20px #2b403015; }
+.deshou-guide button:active:not(:disabled) { transform:translateY(0) scale(.98); }
+.deshou-guide button.deshou-primary { background:linear-gradient(135deg,#ad7051,#86513b); border-color:#aa7354; box-shadow:0 6px 16px #84543b25,inset 0 1px #eccaa566; }
+.deshou-hero + .deshou-actions { padding:8px 0 15px; gap:12px; }
+.deshou-hero + .deshou-actions button { min-height:52px; padding-inline:22px; border-radius:13px; }
+.deshou-grid.zones button { position:relative; min-height:140px; padding:26px; border-radius:18px; background:linear-gradient(135deg,#fffef9,#efefe5); border-color:#d7ddcd; box-shadow:0 7px 25px #203c2806; overflow:hidden; }
+.deshou-grid.zones button::after { content:'↗'; position:absolute; right:18px; bottom:12px; font-size:24px; color:#75826b; }
+.deshou-grid.zones button strong { display:block; padding-right:15px; font-family:Georgia,'Songti SC',serif; font-size:20px; color:#294234; }
+.deshou-grid.zones button span { max-width:90%; color:#68705f; margin-top:10px; }
+.deshou-guide h2 { color:#2b4336; font-weight:450; }
+.deshou-guide .deshou-exhibit { border-color:#dbe0d2; background:linear-gradient(135deg,#fffef9,#f0f1e7); padding:20px; min-height:110px; border-radius:17px; }
+.deshou-category-mark { background:linear-gradient(145deg,#d9e4d1,#bdcdb7); color:#38523d; box-shadow:inset 0 1px #fff,0 5px 10px #1d392215; }
+.deshou-reading,.deshou-tour { background:#fffef8; border-color:#d9dece; border-radius:20px; box-shadow:0 14px 36px -22px #274d3240; }
+.deshou-tour { padding:clamp(22px,4vw,42px); }
+.deshou-guide button.deshou-bubble { border-radius:20px 20px 20px 4px; padding:22px; background:linear-gradient(135deg,#fff,#f4f5e9); border-color:#d1dac4; box-shadow:0 10px 26px #243d2010; }
+.deshou-rabbit { filter:drop-shadow(0 10px 8px #27392420); }
+.deshou-sources { border-color:#dbe0d1; background:#fafbf5; }
+.deshou-search input,.deshou-search select { background:#fffffb; border-color:#ccd5c2; }
+.deshou-shell .conversation { background:radial-gradient(ellipse at 85% 15%,#e4e8dc,transparent 48%),#f5f3ec; }
+.deshou-shell .composer-area { background:#f5f3eceb; }
+.deshou-shell .composer { border-radius:22px; box-shadow:0 12px 35px #25453112; padding:18px; }
+.deshou-shell .deshou-chat-tools { background:#f5f3ec; padding:12px 24px; }
+@keyframes deshou-reveal { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+@media(max-width:620px) {
+ .deshou-hero { min-height:0; padding:26px; gap:12px; }
+ .deshou-hero h1 { font-size:39px; }
+ .deshou-scene { max-width:300px; padding:30px 0 20px; }
+ .deshou-hero + .deshou-actions { display:grid; grid-template-columns:1fr 1fr; }
+ .deshou-hero + .deshou-actions button { padding:12px 8px; font-size:12px; }
+ .deshou-grid.zones button { min-height:120px; padding:23px; }
+ .deshou-nav { top:6px; }
+ .deshou-guide button.deshou-bubble { padding:15px; }
+}
+@media(prefers-reduced-motion:reduce) {
+ .deshou-guide * { animation:none!important; transition:none!important; }
+ .deshou-scene { transform:none!important; }
+ .deshou-guide button:hover:not(:disabled) { transform:none; }
+}
