@@ -7,6 +7,10 @@
   background:#10271f; color:var(--song-paper); font-family:var(--song-sans);
 }
 .atmosphere { position:absolute; inset:0; z-index:-1; pointer-events:none; background:radial-gradient(ellipse at 18% 32%,#7ca68f38,transparent 55%),radial-gradient(ellipse at 85% 72%,#b99b5917,transparent 50%),linear-gradient(160deg,#193b30,#0a1d18); }
+.entry { justify-content: center; align-items: center; }
+.entryCard { display: grid; justify-items: center; gap: 16px; width: min(100%, 460px); padding: clamp(24px, 6vw, 52px); text-align: center; }
+.entryCard h1 { margin: 0; font: 400 clamp(2rem, 5vw, 3rem)/1.15 var(--song-serif); }
+.entryCard p { margin: 0; }
 .header { display:flex; flex-shrink:0; align-items:center; justify-content:space-between; gap:24px; padding:20px 24px; }
 .brand { display:flex; align-items:center; gap:16px; min-width:0; color:inherit; text-decoration:none; }
 .seal { display:grid; place-items:center; flex-shrink:0; width:46px; height:52px; border:1px solid #e8d49b70; border-radius:14px 4px 14px 4px; font:26px var(--song-serif); color:var(--song-gold); background:#e8d49b0a; }

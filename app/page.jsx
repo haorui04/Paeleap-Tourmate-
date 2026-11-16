@@ -1,5 +1,6 @@
 import ChatShell from "../components/ChatShell.jsx";
 import { CHINA_TRAVEL_SLUG, DEFAULT_PERSONA_ID, ENTRY_PERSONA_ID } from "../lib/client/personas.js";
+import { MUSEUM_GUIDE_ID } from "../lib/museum-guide.js";
 import styles from "./chooser.module.css";
 
 const choices = [
@@ -36,7 +37,11 @@ export async function generateMetadata({ searchParams }) {
 
 export default async function Home({ searchParams }) {
   const { persona, artifact } = await searchParams;
-  if (persona !== undefined || artifact !== undefined) return <ChatShell />;
+  if (persona !== undefined || artifact !== undefined) {
+    const requested = Array.isArray(persona) ? persona[0] : persona;
+    const museumEntry = (requested ?? ENTRY_PERSONA_ID) === MUSEUM_GUIDE_ID;
+    return <ChatShell initialPersonaId={museumEntry ? MUSEUM_GUIDE_ID : null} />;
+  }
 
   return (
     <main className={styles.page}>

@@ -5,7 +5,7 @@ import AuthPanel from "./AuthPanel.jsx";
 import useTripHistory from "./useTripHistory.js";
 import TravelScene from "./TravelScene.jsx";
 import MuseumScene from "./MuseumScene.jsx";
-import MuseumRootShell from "./museum/MuseumRootShell.jsx";
+import MuseumRootShell, { MuseumEntryStatus } from "./museum/MuseumRootShell.jsx";
 import { motion, useReducedMotion } from "framer-motion";
 import { MUSEUM_GUIDE_ID } from "../lib/museum-guide.js";
 import DeleteChatDialog from "./DeleteChatDialog.jsx";
@@ -227,7 +227,7 @@ function Message({ message, language, copied, onCopy, avatar }) {
   );
 }
 
-export default function ChatShell() {
+export default function ChatShell({ initialPersonaId = null }) {
   const [language, setLanguage] = useState("en");
   const [museumChat, setMuseumChat] = useState(false);
   const [museumContext, setMuseumContext] = useState(null);
@@ -235,7 +235,7 @@ export default function ChatShell() {
   const [museumPhoto, setMuseumPhoto] = useState(false);
   const [service, setService] = useState({ state: "loading", data: null });
   const [statusAttempt, setStatusAttempt] = useState(0);
-  const [personaId, setPersonaId] = useState(null);
+  const [personaId, setPersonaId] = useState(initialPersonaId);
   const [profile, setProfile] = useState({ state: "loading", data: null });
   const [authClient, setAuthClient] = useState(null);
   const [authReady, setAuthReady] = useState(false);
@@ -673,6 +673,11 @@ export default function ChatShell() {
     { title: language === "zh" ? "参观帮助" : "Visitor information", body: language === "zh" ? "查阅馆方提供的资料" : "Ask about the venue's visitor guidance",
       prompt: language === "zh" ? "参观这个场馆有哪些需要了解的信息？" : "What should I know before visiting this venue?" }
   ];
+
+  if ((personaId ?? initialPersonaId) === MUSEUM_GUIDE_ID && !deshou) {
+    return <MuseumEntryStatus language={language} failed={profile.state === "error"}
+      onRetry={() => setStatusAttempt(attempt => attempt + 1)} />;
+  }
 
   if (deshou) return <MuseumRootShell session={session} authClient={authClient} language={language} onLanguageChange={changeLanguage}
     onSignOut={signOut} isAuthenticated={!demoMode && Boolean(session)} museumTitle={persona?.venue[language]} chatProps={{attachmentEnabled, attachment, attachmentBusy, sessionImages, onAttachmentBusy:setAttachmentBusy, onAttachmentError:setError, onAttachmentChange:file=>setAttachmentDrafts(previous=>({...previous,[activeTrip?.id]:file})),historyItems:trips,activeHistoryId:activeTrip?.id,onSelectHistory:history.selectTrip,onNewHistory:history.newTrip,historyLoading:!history.ready||historyUnavailable,historyError:history.syncFailed,onRetryHistory:history.retrySync,messages:activeTrip?.messages || [],isLoading:pending,error:activeTrip?.error,onSend:personaReady && activeTrip && !historyUnavailable ? text => submitMessage({preventDefault(){}},text) : undefined,maxLength:messageLimit}} />;

@@ -197,4 +197,19 @@ function MuseumShell({ language = "en", onLanguageChange, onSignOut, isAuthentic
 
 
 
+export function MuseumEntryStatus({ language, failed, onRetry }) {
+  const zh = language === "zh";
+  return <main className={`${styles.shell} ${styles.entry}`} lang={zh ? "zh-CN" : "en"}>
+    <div className={styles.atmosphere} aria-hidden="true" />
+    <GlossyCard className={styles.entryCard}>
+      <span className={styles.seal} aria-hidden="true">德</span>
+      <h1>{zh ? "德寿宫" : "Deshou Palace"}</h1>
+      {failed ? <>
+        <p role="alert">{zh ? "小德兔导览暂不可用。" : "The Little De Rabbit guide is temporarily unavailable."}</p>
+        <GlossyButton onClick={onRetry}>{zh ? "重试" : "Try again"}</GlossyButton>
+      </> : <p role="status">{zh ? "正在准备小德兔导览…" : "Preparing the Little De Rabbit guide…"}</p>}
+    </GlossyCard>
+  </main>;
+}
+
 export default function MuseumRootShell({session,authClient,...props}) { return <AuthProvider session={session} client={authClient} onSignOut={props.onSignOut}><MuseumShell {...props}/></AuthProvider>; }
