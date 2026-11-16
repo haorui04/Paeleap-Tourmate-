@@ -22,17 +22,22 @@
     "ai:check": "node scripts/check-sub2api.mjs"
   },
   "dependencies": {
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.2",
     "@supabase/supabase-js": "2.117.3",
     "fflate": "0.8.3",
+    "framer-motion": "^14.10.1",
     "next": "16.4.2",
     "pdf-lib": "1.17.1",
     "react": "19.2.0",
     "react-dom": "19.2.0",
-    "sharp": "0.35.5"
+    "sharp": "0.35.5",
+    "three": "^0.180.0"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.11",
     "@tailwindcss/postcss": "4.3.3",
+    "@types/react": "^19.3.0",
     "tailwindcss": "4.3.3"
   }
 }

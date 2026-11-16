@@ -1,0 +1,14 @@
+.tour{position:relative;min-height:calc(100dvh - 285px);padding:30px 0 35px;text-align:left}
+.heading{max-width:45%;text-shadow:0 2px 20px #10271f}.heading p,.kicker{font:10px var(--song-sans);letter-spacing:.2em;color:var(--song-gold)}
+.heading h1{font:400 clamp(28px,3vw,46px)/1.2 var(--song-serif);margin:12px 0}.heading span{font-size:11px;color:#d0ded3}
+.controls{position:absolute;right:0;top:24px}.controls button{font-size:11px;padding:8px 14px}
+.bubblePosition{display:flex;justify-content:flex-end;margin:32px 0 0;min-height:360px;align-items:center}
+.bubble{width:min(440px,44%);max-width:440px!important;padding:26px!important;background:linear-gradient(135deg,#243e35d9,#142b25bf)!important;box-shadow:inset 1px 1px #ffffff38,0 24px 80px #061b2566!important}
+.bubble h2{font:400 clamp(24px,2.4vw,34px)/1.25 var(--song-serif);margin:12px 0 16px;color:#fff6df}.bubble p{line-height:1.8;font-size:16px}.bubble .note{font:12px/1.7 var(--song-sans);color:#c6d4ca}
+.image{width:100%;height:180px;object-fit:contain;background:#122c24;border:1px solid #ffffff25;border-radius:14px;margin-top:8px}
+.noImage{padding:20px;border:1px solid #ffffff20;border-radius:14px;font:12px/1.6 var(--song-sans);color:#c7d3c4;background:#ffffff06}
+.commentary{max-height:240px;overflow-y:auto;white-space:pre-line;scrollbar-width:thin;padding-right:8px}
+.nextRow{display:flex;align-items:center;justify-content:space-between;gap:16px;border-top:1px solid #ffffff20;padding-top:18px;margin-top:22px}.nextRow>span{font:10px/1.6 var(--song-sans);color:#c5d8c9}.nextRow button{font-size:12px;white-space:nowrap;padding:9px 16px}
+.moving{min-height:190px;display:flex;flex-direction:column;justify-content:center}.moving>span{color:var(--song-gold);font-size:32px;letter-spacing:.4em}.halls{display:grid;gap:10px}.halls button{text-align:left;justify-content:space-between;font-size:13px}
+.empty{margin:40px auto;padding:32px}.srOnly{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:700px){.tour{padding-top:24px}.heading{max-width:100%}.heading h1{font-size:28px}.controls{position:static;margin-top:16px}.bubblePosition{margin-top:220px;min-height:0}.bubble{width:100%;max-width:none!important;padding:22px!important}.bubble p{font-size:15px}.commentary{max-height:200px}}

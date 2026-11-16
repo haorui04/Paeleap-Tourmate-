@@ -1,0 +1,6 @@
+.background { position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; background:#173a31; }
+.background > div:not(.shade):not(.fallback) { position:absolute!important; inset:0; }
+.fallback { position:absolute; inset:0; background:radial-gradient(ellipse at 70% 40%,#476451,#10271f); }
+.fallback svg { position:absolute; width:75%; height:100%; right:0; opacity:.6; }
+.shade { position:absolute; inset:0; background:linear-gradient(90deg,#071e17e8 0%,#0c261dc0 28%,#10271f12 67%),linear-gradient(0deg,#0a211bc9 0%,transparent 55%,#0c261d55 100%); }
+@media(max-width:700px) { .shade { background:linear-gradient(180deg,#0b251eb0 0%,#0b251e88 48%,#0b251ed9 100%); } .fallback svg { width:100%; } }

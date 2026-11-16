@@ -1,0 +1,12 @@
+"use client";
+import {Component,useEffect,useRef} from 'react';
+import {Canvas,useFrame} from '@react-three/fiber';
+import {Float} from '@react-three/drei';
+function World(){
+ const input=useRef({x:0,y:0,click:-100}),dust=useRef(),ring=useRef();
+ useEffect(()=>{const move=e=>{input.current.x=e.clientX/innerWidth*2-1;input.current.y=1-e.clientY/innerHeight*2;};const click=()=>{input.current.click=performance.now()/1000;ring.current.position.set(input.current.x*6,input.current.y*4,-3);};window.addEventListener('pointermove',move);window.addEventListener('pointerdown',click);return()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerdown',click);};},[]);
+ useFrame(({camera,clock},dt)=>{const p=input.current;camera.position.x+=(p.x*.7-camera.position.x)*(1-Math.exp(-dt*2));camera.position.y+=(p.y*.4-camera.position.y)*(1-Math.exp(-dt*2));camera.lookAt(0,0,0);dust.current.children.forEach((m,i)=>{const x=Math.sin(i*12.7)*7,y=Math.cos(i*8.3)*4;const dx=x-p.x*7,dy=y-p.y*4,d=Math.hypot(dx,dy)||1;const repel=Math.max(0,1.5-d);m.position.set(x+dx/d*repel,y+dy/d*repel+Math.sin(clock.elapsedTime*.3+i)*.12,-2);});const age=performance.now()/1000-p.click;ring.current.scale.setScalar(1+age*2);ring.current.material.opacity=Math.max(0,.3-age*.2);});
+ return <><color attach="background" args={['#102b24']}/><fog attach="fog" args={['#102b24',10,25]}/><ambientLight intensity={1.2}/><directionalLight position={[3,5,5]} intensity={2}/><group ref={dust}>{Array.from({length:65},(_,i)=><mesh key={i}><sphereGeometry args={[.018,6,6]}/><meshBasicMaterial color="#ddcc91"/></mesh>)}</group><mesh ref={ring} position={[0,0,-3]}><ringGeometry args={[.98,1,80]}/><meshBasicMaterial color="#d6bd7c" transparent opacity={0}/></mesh>{[-1,1].map(side=><Float key={side} speed={.6} floatIntensity={.3}><group position={[side*4,-1,-2]} rotation={[.5,0,side*.3]}>{Array.from({length:7},(_,i)=><mesh key={i} rotation={[0,0,i*Math.PI*2/7]}><mesh position={[0,.6,0]} scale={[.32,.85,.12]}><sphereGeometry args={[1,24,16]}/><meshStandardMaterial color="#82aa93" metalness={.3} roughness={.35}/></mesh></mesh>)}</group></Float>)}</>;
+}
+class Boundary extends Component { state={failed:false}; static getDerivedStateFromError(){return {failed:true};} render(){return this.state.failed?null:this.props.children;} }
+export default function AskBackgroundScene(){return <Boundary><Canvas dpr={[1,1.5]} camera={{position:[0,0,10],fov:45}}><World/></Canvas></Boundary>;}

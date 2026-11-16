@@ -1,0 +1,4 @@
+.space { min-height:calc(100dvh - 290px);display:grid;place-items:center;padding:48px 16px; }
+.empty { padding:clamp(32px,5vw,64px) clamp(30px,6vw,84px);text-align:center; }
+.empty p { margin:0;color:#b6c8bd;font:400 clamp(17px,2vw,22px)/1.6 var(--song-serif);letter-spacing:.04em; }
+@media(max-width:700px){.space{min-height:calc(100dvh - 340px);padding:40px 0;}}

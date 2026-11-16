@@ -5,7 +5,8 @@ import AuthPanel from "./AuthPanel.jsx";
 import useTripHistory from "./useTripHistory.js";
 import TravelScene from "./TravelScene.jsx";
 import MuseumScene from "./MuseumScene.jsx";
-import DeshouGuide from "./DeshouGuide.jsx";
+import MuseumRootShell from "./museum/MuseumRootShell.jsx";
+import { motion, useReducedMotion } from "framer-motion";
 import { MUSEUM_GUIDE_ID } from "../lib/museum-guide.js";
 import DeleteChatDialog from "./DeleteChatDialog.jsx";
 import ThinkingIndicator from "./ThinkingIndicator.jsx";
@@ -180,11 +181,12 @@ function SafetyBadge({ status, language }) {
 }
 
 function Message({ message, language, copied, onCopy, avatar }) {
+  const reduced = useReducedMotion();
   const t = text[language];
   const assistant = message.role === "assistant";
   const weatherView = assistant ? compactWeatherView(message.content) : null;
   return (
-    <article className={`message-row ${assistant ? "assistant-row" : "user-row"} ${message.fresh ? "message-fresh" : ""}`}>
+    <motion.article initial={message.fresh && !reduced ? { opacity: 0, y: 14 } : false} animate={{ opacity: 1, y: 0 }} transition={{ duration: reduced ? 0 : 0.55, ease: [0.22, 1, 0.36, 1] }} className={`message-row ${assistant ? "assistant-row" : "user-row"} ${message.fresh ? "message-fresh" : ""}`}>
       {assistant && <div className="assistant-avatar" aria-hidden="true">{avatar}</div>}
       <div className="message-column">
         {assistant && <span className="message-author">{message.persona?.name?.[language] || (language === "zh" ? "你的旅行伙伴" : "Your travel companion")}</span>}
@@ -221,7 +223,7 @@ function Message({ message, language, copied, onCopy, avatar }) {
           </div>
         )}
       </div>
-    </article>
+    </motion.article>
   );
 }
 
@@ -245,6 +247,7 @@ export default function ChatShell() {
   const [announcement, setAnnouncement] = useState("");
   // Raw files are deliberately excluded from persistent trip/localStorage state.
   const [attachmentDrafts, setAttachmentDrafts] = useState({});
+  const [sessionImages, setSessionImages] = useState({});
   const [attachmentBusy, setAttachmentBusy] = useState(false);
   const endRef = useRef(null);
   const textareaRef = useRef(null);
@@ -358,7 +361,7 @@ export default function ChatShell() {
     return () => { active = false; listener.subscription.unsubscribe(); };
   }, []);
 
-  const demoMode = service.data?.localDemoMode === true;
+  const demoMode = personaId !== MUSEUM_GUIDE_ID && service.data?.localDemoMode === true;
   const chatIdentity = !personaReady ? null : demoMode ? "demo" : session?.user?.id || null;
   const history = useTripHistory(chatIdentity, authClient, personaId || DEFAULT_PERSONA_ID);
   const { trips, activeTrip } = history;
@@ -371,7 +374,7 @@ export default function ChatShell() {
   const attachmentEnabled = [DEFAULT_PERSONA_ID, "little-de-rabbit"].includes(persona?.id) && service.data?.attachmentsConfigured === true;
   const messageLimit = attachment ? MAX_ATTACHMENT_MESSAGE : MAX_MESSAGE_LENGTH;
 
-  useEffect(() => { setDeleteTarget(null); setDeleteError(""); setAnnouncement(""); setAttachmentDrafts({}); }, [chatIdentity, personaId]);
+  useEffect(() => { setDeleteTarget(null); setDeleteError(""); setAnnouncement(""); setAttachmentDrafts({}); setSessionImages({}); }, [chatIdentity, personaId]);
   useEffect(() => { setAttachmentBusy(false); }, [activeTrip?.id,chatIdentity,personaId]);
   useEffect(() => {
     const ids = new Set(trips.map(trip=>trip.id));
@@ -464,7 +467,10 @@ export default function ChatShell() {
   async function signOut() {
     for (const controller of requestsRef.current.values()) controller.abort();
     requestsRef.current.clear();
-    if (authClient) await authClient.auth.signOut();
+    if (authClient) {
+      const { error } = await authClient.auth.signOut();
+      if (error) throw error;
+    }
   }
 
   async function copyMessage(message) {
@@ -526,17 +532,21 @@ export default function ChatShell() {
     if (!response.ok) throw Error('Report unavailable');
   }
 
-  async function submitMessage(event) {
+  async function submitMessage(event, suppliedText) {
     event.preventDefault();
-    let message = attachment ? attachmentPrompt(draft,language,personaId) : draft.trim();
+    let message = attachment ? attachmentPrompt(suppliedText ?? draft,language,personaId) : (suppliedText ?? draft).trim();
     if (personaId === MUSEUM_GUIDE_ID && museumContext && !attachment && message &&
       /\b(?:it|its|this exhibit|this object|this artifact)\b|它|这件|這件/iu.test(message)) {
       const contextual = `${message}\n\n${language === 'zh' ? '当前展品' : 'Selected exhibit'} — ${museumContext.name[language]}`;
       if (contextual.length <= messageLimit) message = contextual;
     }
-    if (!personaReady || !activeTrip || historyUnavailable || !message || pending || attachmentBusy || requestsRef.current.has(activeTrip.id) || message.length > messageLimit) return;
+    if (!personaReady || !activeTrip || historyUnavailable || !message || pending || attachmentBusy || requestsRef.current.has(activeTrip.id) || message.length > messageLimit) return false;
     const tripId = activeTrip.id;
     const selectedFile = attachment;
+    const userMessageId = makeMessageId("user");
+    if (deshou && selectedFile?.type.startsWith("image/")) {
+      setSessionImages(previous => Object.fromEntries([...Object.entries(previous), [userMessageId, selectedFile]].slice(-12)));
+    }
     const userContent = selectedFile ? attachmentTranscript(message,selectedFile.name,language,personaId) : message;
     let conversationId = activeTrip.conversationId;
     const previousMessages = activeTrip.messages;
@@ -545,7 +555,7 @@ export default function ChatShell() {
     const createdAt = new Date().toISOString();
     history.updateTrip(tripId, (trip) => ({ ...trip, draft: "", error: "", pending: true,
       title: trip.title || message.slice(0, 80), updatedAt: createdAt,
-      messages: [...trip.messages, { id: makeMessageId("user"), role: "user", content: userContent, createdAt }] }));
+      messages: [...trip.messages, { id: userMessageId, role: "user", content: userContent, fresh: true, createdAt }] }));
 
     const controller = new AbortController();
     requestsRef.current.set(tripId, controller);
@@ -628,6 +638,7 @@ export default function ChatShell() {
       }
       if (status === 401 && authClient) await authClient.auth.signOut();
       if (status === 404) history.updateTrip(tripId, { conversationId: null });
+      return false;
     } finally {
       window.clearTimeout(timeout);
       if (requestsRef.current.get(tripId) === controller) {
@@ -663,8 +674,11 @@ export default function ChatShell() {
       prompt: language === "zh" ? "参观这个场馆有哪些需要了解的信息？" : "What should I know before visiting this venue?" }
   ];
 
+  if (deshou) return <MuseumRootShell session={session} authClient={authClient} language={language} onLanguageChange={changeLanguage}
+    onSignOut={signOut} isAuthenticated={!demoMode && Boolean(session)} museumTitle={persona?.venue[language]} chatProps={{attachmentEnabled, attachment, attachmentBusy, sessionImages, onAttachmentBusy:setAttachmentBusy, onAttachmentError:setError, onAttachmentChange:file=>setAttachmentDrafts(previous=>({...previous,[activeTrip?.id]:file})),historyItems:trips,activeHistoryId:activeTrip?.id,onSelectHistory:history.selectTrip,onNewHistory:history.newTrip,historyLoading:!history.ready||historyUnavailable,historyError:history.syncFailed,onRetryHistory:history.retrySync,messages:activeTrip?.messages || [],isLoading:pending,error:activeTrip?.error,onSend:personaReady && activeTrip && !historyUnavailable ? text => submitMessage({preventDefault(){}},text) : undefined,maxLength:messageLimit}} />;
+
   return (
-    <div className={`app-shell${deshou ? ' deshou-shell' : ''}`}>
+    <div className="app-shell">
       <span className="sr-only" role="status">{announcement}</span>
       <DeleteChatDialog trip={deleteTarget} busy={Boolean(history.deletingTripId)} error={deleteError} language={language} onCancel={closeDeleteDialog} onConfirm={confirmDelete}/>
       {sidebarOpen && <button className="sidebar-backdrop" type="button" aria-label={t.closeTrips} onClick={() => { setSidebarOpen(false); historyButtonRef.current?.focus(); }} />}
@@ -730,16 +744,7 @@ export default function ChatShell() {
           </div>
         </header>
 
-        {deshou && <div className={`deshou-explorer${museumChat ? ' deshou-nav-only' : ''}`}>
-          <DeshouGuide language={language} active={!museumChat} onAsk={openMuseumChat} onBrowse={() => setMuseumChat(false)}
-            onPhoto={() => openMuseumChat(null, language === 'zh' ? '这是什么文物？' : 'What artifact is this?', true)}
-            onReport={session && authClient ? sendMuseumReport : undefined} />
-        </div>}
-        {deshou && museumChat && <div className="deshou-chat-tools">
-          <button type="button" onClick={() => setMuseumChat(false)}>{language === 'zh' ? '← 返回导览' : '← Back to museum guide'}</button>
-          {museumContext && <button type="button" onClick={() => setMuseumContext(null)} aria-label={language === 'zh' ? '清除展品上下文' : 'Clear exhibit context'}>{museumContext.name[language]} ×</button>}
-        </div>}
-        {(!deshou || museumChat) && (showLoading ? (
+        {showLoading ? (
           <div className="loading-screen" role="status"><span className="loader" /><p>{t.loading}</p></div>
         ) : service.state === "error" ? (
           <section className="auth-wrap" aria-labelledby="connection-title">
@@ -834,7 +839,7 @@ export default function ChatShell() {
               <p className="composer-note"><span>{t.enterHint}</span><span>{t.disclaimer}</span></p>
             </div>
           </div>
-        ))}
+        )}
       </main>
     </div>
   );

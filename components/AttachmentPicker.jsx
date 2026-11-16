@@ -1,40 +1,41 @@
 "use client";
 import { useEffect, useRef, useState } from 'react';
-import { ATTACHMENT_ACCEPT } from '../lib/attachments/shared.js';
+import { ATTACHMENT_ACCEPT, attachmentExtension } from '../lib/attachments/shared.js';
 import { prepareClientAttachment } from '../lib/client/attachments.js';
 
-export default function AttachmentPicker({file,language,disabled,onChange,onBusy,onError,museum=false,cameraMode=false}) {
+export default function AttachmentPicker({file,language,disabled,onChange,onBusy,onError,museum=false,cameraMode=false,imageOnly=false,showPreview=true}) {
   const input = useRef(null); const camera = useRef(null); const sequence = useRef(0); const [preview,setPreview] = useState('');
-  useEffect(() => () => { sequence.current += 1; }, []);
+  useEffect(() => () => { sequence.current += 1; onBusy(false); }, [onBusy]);
   useEffect(() => {
-    if (!file?.type.startsWith('image/')) { setPreview(''); return; }
+    if (!showPreview || !file?.type.startsWith('image/')) { setPreview(''); return; }
     const url = URL.createObjectURL(file); setPreview(url);
     return () => URL.revokeObjectURL(url);
-  },[file]);
+  },[file,showPreview]);
   async function select(event) {
     const selected = event.target.files?.[0]; event.target.value = '';
     if (!selected) return;
     const current = ++sequence.current; onBusy(true); onError('');
     try {
+      if (imageOnly && !['jpg','jpeg','png','webp'].includes(attachmentExtension(selected.name))) throw new Error('format');
       const prepared = await prepareClientAttachment(selected);
       if (current === sequence.current) onChange(prepared);
     } catch(error) {
       if (current === sequence.current) onError(language === 'zh'
-        ? error.message === 'size' ? '文件过大。文档限 2 MB，图片限 8 MB、1600 万像素；图片会在上传前缩小。' : '请选择 JPG、PNG、WebP、PDF、DOCX、TXT 或 Markdown 文件。'
-        : error.message === 'size' ? 'File too large. Documents: 2 MB. Images: 8 MB and 16 megapixels before resizing.' : 'Choose a JPG, PNG, WebP, PDF, DOCX, TXT or Markdown file.');
+        ? imageOnly ? (error.message === 'size' ? '图片过大。请选择 8 MB、1600 万像素以内的图片。' : '请选择可读取的 JPG、PNG 或 WebP 图片。') : error.message === 'size' ? '文件过大。文档限 2 MB，图片限 8 MB、1600 万像素；图片会在上传前缩小。' : '请选择 JPG、PNG、WebP、PDF、DOCX、TXT 或 Markdown 文件。'
+        : imageOnly ? (error.message === 'size' ? 'Choose an image under 8 MB and 16 megapixels.' : 'Choose a readable JPG, PNG or WebP image.') : error.message === 'size' ? 'File too large. Documents: 2 MB. Images: 8 MB and 16 megapixels before resizing.' : 'Choose a JPG, PNG, WebP, PDF, DOCX, TXT or Markdown file.');
     } finally { if(current === sequence.current) onBusy(false); }
   }
   return <div className="attachment-picker">
-    <input ref={input} type="file" className="sr-only" accept={ATTACHMENT_ACCEPT} onChange={select} disabled={disabled} aria-label={museum ? language === 'zh' ? '选择文物图片或博物馆文档' : 'Choose an artifact image or museum document' : language === 'zh' ? '选择图片或旅游文档' : 'Choose an image or travel document'} tabIndex={-1}/>
+    <input ref={input} type="file" className="sr-only" accept={imageOnly ? ".jpg,.jpeg,.png,.webp" : ATTACHMENT_ACCEPT} onChange={select} disabled={disabled} aria-label={imageOnly ? (language === "zh" ? "选择文物图片" : "Choose an artifact image") : museum ? language === 'zh' ? '选择文物图片或博物馆文档' : 'Choose an artifact image or museum document' : language === 'zh' ? '选择图片或旅游文档' : 'Choose an image or travel document'} tabIndex={-1}/>
     {cameraMode && <>
       <input ref={camera} type="file" hidden accept="image/jpeg,image/png,image/webp" capture="environment" onChange={select} disabled={disabled}/>
       <button className="attach-button" type="button" disabled={disabled} onClick={() => camera.current?.click()}>{language === 'zh' ? '拍照' : 'Take photo'}</button>
     </>}
-    <button className="attach-button" type="button" onClick={()=>input.current?.click()} disabled={disabled} aria-label={language === 'zh' ? '添加图片或文件' : 'Attach an image or document'} title={language === 'zh' ? '图片、PDF、DOCX、TXT、Markdown · 单个文件 2 MB' : 'Image, PDF, DOCX, TXT, Markdown · one file, 2 MB'}>
+    <button className="attach-button" type="button" onClick={()=>input.current?.click()} disabled={disabled} aria-label={imageOnly ? (language === 'zh' ? '添加图片' : 'Attach image') : language === 'zh' ? '添加图片或文件' : 'Attach an image or document'} title={language === 'zh' ? '图片、PDF、DOCX、TXT、Markdown · 单个文件 2 MB' : 'Image, PDF, DOCX, TXT, Markdown · one file, 2 MB'}>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="m8 13 6-6a3 3 0 0 1 4 4l-8 8a5 5 0 0 1-7-7l9-9a6 6 0 0 1 8 8l-8 8"/></svg>
-      {language === 'zh' ? '附件' : 'Attach'}
+      {!imageOnly && (language === 'zh' ? '附件' : 'Attach')}
     </button>
-    {file && <div className="attachment-chip">
+    {showPreview && file && <div className="attachment-chip">
       {preview && <img src={preview} alt="" width="36" height="36"/>}
       <span title={file.name}>{file.name}<small>{Math.max(1,Math.round(file.size/1024))} KB</small></span>
       <button type="button" disabled={disabled} onClick={()=>onChange(null)} aria-label={language === 'zh' ? '移除附件' : 'Remove attachment'}>×</button>

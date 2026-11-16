@@ -1,0 +1,28 @@
+"use client";
+import {createContext,useContext,useEffect,useRef,useState} from 'react';
+import {GlossyButton,GlossyCard} from '../ui/Glossy.jsx';
+import styles from './Auth.module.css';
+const AuthContext=createContext(null);
+export const useMuseumAuth=()=>useContext(AuthContext);
+// Session ownership remains in ChatShell, which already subscribes to Supabase auth changes.
+export function AuthProvider({session,client,onSignOut,children}){
+ const [open,setOpen]=useState(false),[admin,setAdmin]=useState(false);const intended=useRef(null);
+ useEffect(()=>{setAdmin(false);if(!session)return;let active=true;const controller=new AbortController();fetch('/api/auth/profile',{headers:{Authorization:`Bearer ${session.access_token}`},signal:controller.signal}).then(r=>r.json()).then(r=>{if(active)setAdmin(r.is_admin===true);}).catch(()=>{});return()=>{active=false;controller.abort();};},[session]);
+ useEffect(()=>{if(session&&open){setOpen(false);const action=intended.current;intended.current=null;action?.();}},[session,open]);
+ const close=()=>{intended.current=null;setOpen(false);};
+ return <AuthContext.Provider value={{user:session?.user,admin,request:action=>{if(session)action?.();else{intended.current=action;setOpen(true);}},logout:onSignOut}}>{children}{open&&<AuthModal client={client} onClose={close}/>}</AuthContext.Provider>;
+}
+export function AuthModal({client,onClose}){
+ const dialog=useRef(null),lock=useRef(false);const [signup,setSignup]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
+ useEffect(()=>{const previous=document.activeElement;dialog.current.showModal();return()=>previous?.focus?.();},[]);
+ async function submit(event){event.preventDefault();if(lock.current)return;const form=new FormData(event.currentTarget);const email=String(form.get('email')).trim(),password=String(form.get('password')),avatar=String(form.get('avatar')||'').trim();setError('');setNotice('');if(signup&&password!==form.get('confirm'))return setError('Passwords do not match.');if(avatar){try{const url=new URL(avatar);if(url.protocol!=='https:'||url.username||url.password)throw Error();}catch{return setError('Use a valid HTTPS avatar URL.');}}if(!client)return setError('Authentication is unavailable. Please try again later.');lock.current=true;setBusy(true);try{const {data,error}=signup?await client.auth.signUp({email,password,options:{data:{avatar_url:avatar||null}}}):await client.auth.signInWithPassword({email,password});if(error)throw error;if(signup&&!data.session)setNotice('Check your email to confirm your account, then sign in here.');}catch(e){setError(e.message||'Unable to sign in. Please try again.');}finally{lock.current=false;setBusy(false);}}
+ return <dialog ref={dialog} className={styles.dialog} onCancel={e=>{e.preventDefault();onClose();}} aria-labelledby="museum-auth-title"><GlossyCard className={styles.card}><GlossyButton className={styles.close} onClick={onClose} aria-label="Close authentication">×</GlossyButton><h2 id="museum-auth-title">{signup?'Create Account':'Sign In'}</h2><form onSubmit={submit} key={String(signup)}><label>Email<input name="email" type="email" autoComplete="email" required maxLength={254}/></label><label>Password<input name="password" type="password" autoComplete={signup?'new-password':'current-password'} required minLength={signup?8:1} maxLength={128}/></label>{signup&&<><label>Confirm password<input name="confirm" type="password" autoComplete="new-password" required/></label><label>Avatar URL (optional)<input name="avatar" type="url" placeholder="https://…" maxLength={2048}/></label></>}{error&&<p role="alert">{error}</p>}{notice&&<p role="status">{notice}</p>}<GlossyButton type="submit" variant="gold" disabled={busy}>{busy?'Please wait…':signup?'Create Account':'Sign In'}</GlossyButton></form><GlossyButton disabled={busy} onClick={()=>{setSignup(v=>!v);setError('');setNotice('');}}>{signup?'Already registered? Sign In':'Create an account'}</GlossyButton></GlossyCard></dialog>;
+}
+export function ProfileControl(){
+ const auth=useMuseumAuth(),root=useRef(null);const [open,setOpen]=useState(false),[failed,setFailed]=useState(false),[error,setError]=useState(''),[busy,setBusy]=useState(false);
+ useEffect(()=>{const close=e=>{if(!root.current?.contains(e.target))setOpen(false);};document.addEventListener('pointerdown',close);return()=>document.removeEventListener('pointerdown',close);},[]);
+ useEffect(()=>{setOpen(false);setFailed(false);},[auth.user?.id]);
+ if(!auth.user)return <GlossyButton onClick={()=>auth.request()}>Sign in / Sign up</GlossyButton>;
+ const avatar=auth.user.user_metadata?.avatar_url;
+ return <div ref={root} className={styles.profile} onKeyDown={e=>{if(e.key==='Escape'){setOpen(false);root.current.querySelector('button').focus();}}}><GlossyButton aria-label="User profile" aria-expanded={open} onClick={()=>setOpen(v=>!v)} className={styles.avatar}>{!failed&&typeof avatar==='string'&&avatar.startsWith('https://')?<img src={avatar} alt="" referrerPolicy="no-referrer" onError={()=>setFailed(true)}/>:<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg>}</GlossyButton>{open&&<GlossyCard className={styles.menu}>{auth.admin&&<a href="/admin">Administrator Settings</a>}<GlossyButton disabled={busy} onClick={async()=>{setBusy(true);setError('');try{await auth.logout();}catch{setError('Could not log out. Please retry.');}finally{setBusy(false);}}}>Log out</GlossyButton>{error&&<p role="alert">{error}</p>}</GlossyCard>}</div>;
+}
