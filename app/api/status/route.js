@@ -1,7 +1,7 @@
-import { hasConfiguredValue, localDemoEnabled, mockAiEnabled, resolveAiApiKey } from "../../../lib/config.js";
+import { groqTextEndpoint, groqVisionConfig, hasConfiguredValue, localDemoEnabled, mockAiEnabled, resolveAiApiKey, useGroqVision } from "../../../lib/config.js";
 import { FAQ_BANK_SIZE } from '../../../lib/knowledge-config.js';
 import { museumWebSearchConfigured, museumImageSearchProvider } from '../../../lib/attachments/museum-search.js';
-import { geminiImageConfigured } from '../../../lib/attachments/image-identify.js';
+import { museumImageIdentityProvider } from '../../../lib/attachments/image-identify.js';
 
 export const runtime = "nodejs";
 
@@ -10,6 +10,8 @@ export async function GET() {
   // Expose active mode without revealing provider credentials.
   // This confirms configuration, NOT that a live provider inference succeeds.
   const aiResponseMode = ["grounded", "generated"].includes(process.env.AI_RESPONSE_MODE) && !localDemo ? process.env.AI_RESPONSE_MODE : "faq";
+  const aiConfigured = [process.env.AI_BASE_URL, resolveAiApiKey(), process.env.AI_MODEL].every(hasConfiguredValue);
+  const imageIdentityProvider = museumImageIdentityProvider();
   const ready = [process.env.AI_BASE_URL, resolveAiApiKey(), process.env.AI_MODEL,
     process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY, process.env.SUPABASE_SERVICE_ROLE_KEY,
     process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY].every(hasConfiguredValue) &&
@@ -17,11 +19,13 @@ export async function GET() {
   return Response.json({
     service: "paeleap-tourism-ai",
     status: process.env.NODE_ENV === "production" && !ready ? "unconfigured" : "ok",
-    aiConfigured: [process.env.AI_BASE_URL, resolveAiApiKey(), process.env.AI_MODEL].every(hasConfiguredValue),
-    attachmentsConfigured: [process.env.AI_BASE_URL, resolveAiApiKey(), process.env.AI_MODEL, process.env.AI_VISION_MODEL].every(hasConfiguredValue),
+    aiConfigured,
+    textProvider: aiConfigured && groqTextEndpoint() ? "groq" : null,
+    attachmentsConfigured: aiConfigured && (useGroqVision() ? Boolean(groqVisionConfig()) : hasConfiguredValue(process.env.AI_VISION_MODEL)),
     museumWebImageSearchConfigured: museumWebSearchConfigured(),
     museumImageSearchProvider: museumImageSearchProvider(),
-    directImageIdentityConfigured: geminiImageConfigured(),
+    directImageIdentityConfigured: Boolean(imageIdentityProvider),
+    imageIdentityProvider,
     supabaseConfigured: [process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY, process.env.SUPABASE_SERVICE_ROLE_KEY].every(hasConfiguredValue),
     localDemoMode: localDemo,
     aiMockMode: mockAiEnabled(),
