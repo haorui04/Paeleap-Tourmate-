@@ -188,7 +188,9 @@ export default function GlassChatbot({
         {feedback && <p id={`${id}-error`} role="alert" className="m-0 mb-3 text-sm leading-relaxed text-[#f4c9b8]">{feedback}</p>}
         {attachmentPreview}
         <form onSubmit={submit} className="flex items-end gap-2 rounded-full backdrop-blur-xl border border-white/25 bg-[#10231d]/40 p-2 transition-colors focus-within:border-[#d8b969]/60">
-          {attachmentControl}
+          {attachmentControl && (
+            <div className="grid min-h-11 flex-none place-items-center">{attachmentControl}</div>
+          )}
           <label htmlFor={`${id}-input`} className="sr-only">{copy.label}</label>
           <textarea
             ref={textarea}
@@ -207,7 +209,7 @@ export default function GlassChatbot({
             readOnly={busy || unavailable}
             aria-describedby={`${id}-hint${feedback ? ` ${id}-error` : ""}`}
             placeholder={copy.placeholder}
-            className="max-h-28 min-h-11 min-w-0 flex-1 resize-none border-0 bg-transparent px-2 py-3 text-sm leading-5 text-[#f7f3e9] outline-none placeholder:text-[#a3c5b2]"
+            className={`max-h-28 min-h-11 min-w-0 flex-1 resize-none border-0 bg-transparent pr-2 py-3 text-left text-sm leading-5 text-[#f7f3e9] outline-none placeholder:text-[#a3c5b2] ${attachmentControl ? "pl-0" : "pl-2"}`}
           />
           <motion.button
             type="submit"
