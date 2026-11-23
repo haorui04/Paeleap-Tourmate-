@@ -13,7 +13,21 @@
 .entryCard p { margin: 0; }
 .header { display:flex; flex-shrink:0; align-items:center; justify-content:space-between; gap:24px; padding:20px 24px; }
 .brand { display:flex; align-items:center; gap:16px; min-width:0; color:inherit; text-decoration:none; }
-.seal { display:grid; place-items:center; flex-shrink:0; width:46px; height:52px; border:1px solid #e8d49b70; border-radius:14px 4px 14px 4px; font:26px var(--song-serif); color:var(--song-gold); background:#e8d49b0a; }
+.brand > :last-child { min-width:0; }
+.wordmark {
+  display:block;
+  isolation:isolate;
+  overflow:hidden;
+  flex:none;
+  width:clamp(88px,10vw,132px);
+  aspect-ratio:5/2;
+  border:1px solid #e8d49bb3;
+  border-radius:11px 4px 11px 4px;
+  background:linear-gradient(140deg,#fcf5e6,#e5d6b4);
+  box-shadow:inset 0 1px #fff9,0 3px 10px #071b1533;
+}
+.wordmark img { display:block; width:100%; height:100%; object-fit:cover; mix-blend-mode:multiply; }
+.entryCard .wordmark { width:144px; }
 .eyebrow { display:block; font-size:9px; letter-spacing:.19em; color:#c3d7c8; margin-bottom:7px; }
 .museumTitle { display:block; font:400 clamp(17px,1.8vw,25px)/1.35 var(--song-serif); }
 .actions { display:flex; align-items:center; gap:16px; flex-shrink:0; }

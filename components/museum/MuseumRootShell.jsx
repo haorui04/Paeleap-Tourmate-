@@ -18,6 +18,14 @@ const TABS = ["Explore", "Tour", "Ask", "Saved"];
 const LABELS = { Explore: "探索", Tour: "导览", Ask: "提问", Saved: "收藏" };
 const MuseumBackgroundScene = dynamic(() => import("./scene/MuseumBackgroundScene.jsx"), { ssr: false });
 
+function MuseumWordmark() {
+  return (
+    <span className={styles.wordmark}>
+      <img src="/paeleap-museum-logo.png" alt="Paeleap" width={900} height={400} />
+    </span>
+  );
+}
+
 export function useMuseumShell() {
   const context = useContext(MuseumShellContext);
   if (!context) throw new Error("useMuseumShell must be used inside MuseumRootShell");
@@ -145,7 +153,7 @@ function MuseumShell({ language = "en", onLanguageChange, onSignOut, isAuthentic
       </motion.div>
       <GlossyCard as="header" className={styles.header}>
         <a className={styles.brand} href="/?persona=little-de-rabbit" aria-label={zh ? "德寿宫博物馆首页" : "Deshou Palace museum home"}>
-          <span className={styles.seal} aria-hidden="true">德</span>
+          <MuseumWordmark />
           <span><span className={styles.eyebrow}>{zh ? "南宋 · 杭州" : "SOUTHERN SONG · HANGZHOU"}</span>
             <span className={styles.museumTitle}>{museumTitle || (zh ? "南宋德寿宫遗址博物馆" : "Deshou Palace Ruins Museum")}</span></span>
         </a>
@@ -202,7 +210,7 @@ export function MuseumEntryStatus({ language, failed, onRetry }) {
   return <main className={`${styles.shell} ${styles.entry}`} lang={zh ? "zh-CN" : "en"}>
     <div className={styles.atmosphere} aria-hidden="true" />
     <GlossyCard className={styles.entryCard}>
-      <span className={styles.seal} aria-hidden="true">德</span>
+      <MuseumWordmark />
       <h1>{zh ? "德寿宫" : "Deshou Palace"}</h1>
       {failed ? <>
         <p role="alert">{zh ? "小德兔导览暂不可用。" : "The Little De Rabbit guide is temporarily unavailable."}</p>
