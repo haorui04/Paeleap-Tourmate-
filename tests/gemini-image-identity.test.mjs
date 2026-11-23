@@ -4,22 +4,21 @@ import {parseArtifactIdentity,geminiImageConfigured,matchArtifactName} from '../
 import {DESHOU_PERSONA as persona} from '../data/personas/deshou-palace.js';
 import {parseChatResponse} from '../lib/client/chat.js';
 import {requestModelText,modelEndpoint} from '../lib/ai/provider.js';
-const env={AI_BASE_URL:'https://unused-gateway.invalid/v1',AI_API_KEY:'unused-gateway-key',AI_MODEL:'unused-paid-model',AI_VISION_MODEL:'unused-vision',AI_IMAGE_IDENTIFICATION_PROVIDER:'gemini_free',AI_IMAGE_IDENTIFICATION_MODEL:'gemini-3.6-flash',GEMINI_API_KEY:'synthetic-gemini',AI_API_STYLE:'chat_completions'};
+const env={AI_BASE_URL:'https://unused-gateway.invalid/v1',AI_API_KEY:'unused-gateway-key',AI_MODEL:'unused-paid-model',AI_VISION_MODEL:'unused-vision',AI_IMAGE_IDENTIFICATION_PROVIDER:'gemini_free',AI_IMAGE_IDENTIFICATION_MODEL:'gemini-3.6-flash',GEMINI_API_KEY:'synthetic-gemini',AI_API_STYLE:'chat_completions',MUSEUM_REFERENCE_IMAGES_ENABLED:'false'};
 const identity={decision:'identified',name_en:'Longquan seven-tube hexagonal flower vessel',name_zh:'龙泉窑青釉六方七管占景盆',confidence:'high'};
 const well={...identity,name_en:'Ancient well',name_zh:'古井'};
-const model=data=>Response.json({choices:[{finish_reason:'stop',message:{content:JSON.stringify(data)}}]});
+const model=data=>Response.json({candidates:[{finishReason:'STOP',content:{parts:[{text:JSON.stringify(data)}]}}]});
 const image={kind:'image',bytes:Buffer.from('normalized JPEG fixture')};
 const run=(fetchImpl,changes={})=>identifyMuseumArtifact({attachment:image,message:'What artifact is this?',persona,env,fetchImpl,...changes});
 
 test('one direct Gemini request then local lookup, isolated from Gateway credentials and paid models',async()=>{
  let calls=0;const result=await run(async(url,init)=>{
   calls++;const body=JSON.parse(init.body);
-  assert.equal(url,'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions');
-  assert.equal(init.headers.Authorization,'Bearer '+env.GEMINI_API_KEY);
-  assert.equal(body.model,env.AI_IMAGE_IDENTIFICATION_MODEL);assert.equal(body.reasoning_effort,'minimal');
-  assert.equal(body.temperature,0);
-  assert.doesNotMatch(init.body,/unused-|gateway|deepseek/i);assert.equal(body.reasoning,undefined);
-  assert.ok(body.messages[1].content.some(part=>part.type==='image_url'&&part.image_url.url.startsWith('data:image/jpeg;base64,')));
+  assert.equal(url,'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent');
+  assert.equal(init.headers['x-goog-api-key'],env.GEMINI_API_KEY);
+  assert.equal(body.generationConfig.thinkingConfig.thinkingLevel,'LOW');
+  assert.doesNotMatch(init.body,/unused-|gateway|deepseek/i);
+  assert.ok(body.contents[0].parts.some(part=>part.inlineData?.mimeType==='image/jpeg'));
   assert.doesNotMatch(init.body,/DS005|untrusted_reference_data|visitor[.]jpg/);return model(identity);
  },{message:'Please identify this. The filename should not affect identification.'});
  assert.equal(calls,1);assert.equal(result.mode,'museum_identity_match');assert.match(result.reply,/Artifact: Longquan/);
@@ -63,10 +62,43 @@ for(const status of [429,503])test('HTTP '+status+' has bounded requests, no pai
  let calls=0;const result=await run(async()=>{calls++;return Response.json({error:{message:'private error'}},{status});});
  assert.equal(calls,status===503?2:1);assert.equal(result.mode,'museum_attachment_unavailable');assert.doesNotMatch(result.reply,/private error|No matching/);
 });
-test('transient 503 retries once on the identical free model then completes lookup',async()=>{
- let calls=0;const result=await run(async(url,init)=>{calls++;assert.equal(JSON.parse(init.body).model,'gemini-3.6-flash');
+test('transient 503 tries approved Flash-Lite once using the same Gemini key',async()=>{
+ let calls=0;const result=await run(async(url,init)=>{calls++;assert.ok(url.endsWith(calls===1?'gemini-3.6-flash:generateContent':'gemini-3.1-flash-lite:generateContent'));
   return calls===1?Response.json({error:{}},{status:503}):model(identity);});
  assert.equal(calls,2);assert.equal(result.mode,'museum_identity_match');
+});
+
+for (const [language, message, expectedName] of [['en','What object is this?',/Longquan/],['zh','这是什么东西？',/龙泉窑青釉六方七管占景盆/]]) {
+  test(`museum compares both photos using the dedicated Gemini key in ${language}`, async () => {
+    const calls = [];
+    const result = await run(async (url, init) => {
+      const body = JSON.parse(init.body);
+      assert.equal(url, 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent');
+      assert.equal(init.headers['x-goog-api-key'], env.GEMINI_API_KEY);
+      calls.push(body.contents[0].parts.filter(part => part.inlineData).length);
+      return model(calls.length === 1 ? identity : { decision:'match', recordId:'DS005' });
+    }, { language, message, env:{ ...env, MUSEUM_REFERENCE_IMAGES_ENABLED:'true' } });
+    assert.deepEqual(calls, [1,2]);
+    assert.deepEqual(result.recordIds, ['DS005']);
+    assert.match(result.reply, expectedName);
+  });
+}
+
+test('a lotus tile cannot match a beast-mask tile, and a photo mismatch cannot fall back to the same name', async () => {
+  assert.equal(matchArtifactName({name_en:'Lotus-pattern eaves tile',name_zh:'莲花纹瓦当'},museumArtifactRecords(persona)),null);
+  let calls=0;
+  const result=await run(() => model(++calls===1 ? identity : {decision:'different',recordId:''}), {env:{...env,MUSEUM_REFERENCE_IMAGES_ENABLED:'true'}});
+  assert.equal(result.mode,'museum_identity_not_found');
+  assert.equal(calls,2);
+});
+
+test('a clear reference may identify a photo even when Gemini could not name it on its own', async () => {
+  let calls=0;
+  const result=await run(() => model(++calls===1
+    ? {decision:'uncertain',name_en:'',name_zh:'',confidence:'low'} : {decision:'match',recordId:'DS005'}),
+  {env:{...env,MUSEUM_REFERENCE_IMAGES_ENABLED:'true'}});
+  assert.deepEqual(result.recordIds,['DS005']);
+  assert.equal(calls,2);
 });
 test('direct Google endpoint rejects alternate protocols, arbitrary paths and paid-only models',async()=>{
  assert.throws(()=>modelEndpoint('https://generativelanguage.googleapis.com/v1beta/openai','responses'));
@@ -75,7 +107,7 @@ test('direct Google endpoint rejects alternate protocols, arbitrary paths and pa
 });
 test('approved Flash-Lite uses minimal thinking and one request',async()=>{
  let calls=0;const result=await run(async(url,init)=>{
-  calls++;const body=JSON.parse(init.body);assert.equal(body.model,'gemini-3.5-flash-lite');assert.equal(body.reasoning_effort,'minimal');
+  calls++;const body=JSON.parse(init.body);assert.ok(url.endsWith('gemini-3.5-flash-lite:generateContent'));assert.equal(body.generationConfig.thinkingConfig.thinkingLevel,'MINIMAL');
   assert.equal(new URL(url).hostname,'generativelanguage.googleapis.com');return model(identity);
  },{env:{...env,AI_IMAGE_IDENTIFICATION_MODEL:'gemini-3.5-flash-lite'}});
  assert.equal(calls,1);assert.equal(result.mode,'museum_identity_match');

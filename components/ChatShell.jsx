@@ -371,7 +371,8 @@ export default function ChatShell({ initialPersonaId = null }) {
   const pending = activeTrip?.pending === true;
   const historyUnavailable = activeTrip?.loaded === false;
   const attachment = attachmentDrafts[activeTrip?.id] || null;
-  const attachmentEnabled = [DEFAULT_PERSONA_ID, "little-de-rabbit"].includes(persona?.id) && service.data?.attachmentsConfigured === true;
+  const attachmentEnabled = persona?.id === "little-de-rabbit" && service.data?.directImageIdentityConfigured === true ||
+    [DEFAULT_PERSONA_ID, "little-de-rabbit"].includes(persona?.id) && service.data?.attachmentsConfigured === true;
   const messageLimit = attachment ? MAX_ATTACHMENT_MESSAGE : MAX_MESSAGE_LENGTH;
 
   useEffect(() => { setDeleteTarget(null); setDeleteError(""); setAnnouncement(""); setAttachmentDrafts({}); setSessionImages({}); }, [chatIdentity, personaId]);

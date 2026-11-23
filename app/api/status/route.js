@@ -1,4 +1,4 @@
-import { groqTextEndpoint, groqVisionConfig, hasConfiguredValue, localDemoEnabled, mockAiEnabled, resolveAiApiKey, useGroqVision } from "../../../lib/config.js";
+import { geminiTextEndpoint, groqTextEndpoint, groqVisionConfig, hasConfiguredValue, localDemoEnabled, mockAiEnabled, resolveAiApiKey, useGroqVision } from "../../../lib/config.js";
 import { FAQ_BANK_SIZE } from '../../../lib/knowledge-config.js';
 import { museumWebSearchConfigured, museumImageSearchProvider } from '../../../lib/attachments/museum-search.js';
 import { museumImageIdentityProvider } from '../../../lib/attachments/image-identify.js';
@@ -20,7 +20,7 @@ export async function GET() {
     service: "paeleap-tourism-ai",
     status: process.env.NODE_ENV === "production" && !ready ? "unconfigured" : "ok",
     aiConfigured,
-    textProvider: aiConfigured && groqTextEndpoint() ? "groq" : null,
+    textProvider: aiConfigured ? (geminiTextEndpoint() ? "gemini" : groqTextEndpoint() ? "groq" : null) : null,
     attachmentsConfigured: aiConfigured && (useGroqVision() ? Boolean(groqVisionConfig()) : hasConfiguredValue(process.env.AI_VISION_MODEL)),
     museumWebImageSearchConfigured: museumWebSearchConfigured(),
     museumImageSearchProvider: museumImageSearchProvider(),
